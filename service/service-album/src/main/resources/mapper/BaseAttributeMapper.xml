@@ -4,6 +4,26 @@
 
 <mapper namespace="com.atguigu.tingshu.album.mapper.BaseAttributeMapper">
 
+    <!--创建自定义结果集-->
+    <resultMap id="BaseAttributeResultMap" type="com.atguigu.tingshu.model.album.BaseAttribute" autoMapping="true">
+        <!--封装1方字段 标签表-->
+        <id property="id" column="id"/>
+        <!--封装多方字段 标签值 ofType:指定集合泛型-->
+        <collection property="attributeValueList" ofType="com.atguigu.tingshu.model.album.BaseAttributeValue" autoMapping="true">
+            <id property="id" column="base_attribute_value_id"/>
+        </collection>
+    </resultMap>
 
+    <!--#{}是占位符，防止SQL注入  ${}是拼接符 存在SQL注入问题，需要动态传入查询字段或查询表必须采用${}-->
+    <select id="findAttribute" resultMap="BaseAttributeResultMap">
+        select
+            ba.id,
+            ba.attribute_name,
+            bav.id base_attribute_value_id,
+            bav.value_name
+        from base_attribute ba inner join  base_attribute_value bav
+                                           on bav.attribute_id = ba.id and bav.is_deleted = 0
+        where ba.category1_id = #{category1Id} and ba.is_deleted = 0
+    </select>
 </mapper>
 

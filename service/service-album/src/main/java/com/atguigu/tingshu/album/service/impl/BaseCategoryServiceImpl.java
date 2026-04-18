@@ -1,11 +1,9 @@
 package com.atguigu.tingshu.album.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
-import com.atguigu.tingshu.album.mapper.BaseCategory1Mapper;
-import com.atguigu.tingshu.album.mapper.BaseCategory2Mapper;
-import com.atguigu.tingshu.album.mapper.BaseCategory3Mapper;
-import com.atguigu.tingshu.album.mapper.BaseCategoryViewMapper;
+import com.atguigu.tingshu.album.mapper.*;
 import com.atguigu.tingshu.album.service.BaseCategoryService;
+import com.atguigu.tingshu.model.album.BaseAttribute;
 import com.atguigu.tingshu.model.album.BaseCategory1;
 import com.atguigu.tingshu.model.album.BaseCategoryView;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -95,4 +93,19 @@ public class BaseCategoryServiceImpl extends ServiceImpl<BaseCategory1Mapper, Ba
         //5.响应所有1级分类列表
         return jsonList1;
     }
+
+	@Autowired
+	private BaseAttributeMapper baseAttributeMapper;
+
+	/**
+	 * 根据1级分类ID查询标签列表（包含标签值列表）
+	 * @param category1Id 1级分类ID
+	 * @return 标签列表
+	 */
+	@Override
+	public List<BaseAttribute> findAttribute(Long category1Id) {
+		//方式一：根据1级分类ID查询标签列表、遍历标签列表，根据标签ID查询标签值列表 问题：SQL执行次数过多
+		//方式二：调用持久层执行动态SQL，进行两张表关联查询
+		return baseAttributeMapper.findAttribute(category1Id);
+	}
 }

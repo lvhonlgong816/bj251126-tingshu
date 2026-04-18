@@ -3,11 +3,13 @@ package com.atguigu.tingshu.album.api;
 import com.alibaba.fastjson.JSONObject;
 import com.atguigu.tingshu.album.service.BaseCategoryService;
 import com.atguigu.tingshu.common.result.Result;
+import com.atguigu.tingshu.model.album.BaseAttribute;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.aspectj.weaver.ast.Var;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,23 +43,17 @@ public class BaseCategoryApiController {
 	}
 
 
-	public static void main(String[] args) {
-		//fastjson JSON工具包
-		//List<JSONObject> list2 = new ArrayList<>();
-		//list2.add(new JSONObject(Map.of("categoryId",10, "categoryName", "男频")));
-		//JSONObject level1_1 = new JSONObject(Map.of("categoryId",1, "categoryName", "有声书", "categoryChild",list2));
-		//
-		//JSONObject level1_2 = new JSONObject(Map.of("categoryId",2, "categoryName", "娱乐"));
-		//
-		//List<JSONObject> list = new ArrayList<>();
-		//list.add(level1_1);
-		//list.add(level1_2);
-		//
-		//System.out.println(list);
-
-		//JSONObject level1_1 = new JSONObject();
-		//level1_1.put("a", "b");
-		//System.out.println(level1_1);
+	/**
+	 * 根据1级分类ID查询标签列表（包含标签值列表）
+	 * @param category1Id 1级分类ID
+	 * @return 标签列表
+	 */
+	@Operation(summary = "根据1级分类ID查询标签列表（包含标签值列表）")
+	@GetMapping("/category/findAttribute/{category1Id}")
+	public Result<List<BaseAttribute>> findAttribute(@PathVariable Long category1Id){
+		List<BaseAttribute> list = baseCategoryService.findAttribute(category1Id);
+		return Result.ok(list);
 	}
+
 }
 
