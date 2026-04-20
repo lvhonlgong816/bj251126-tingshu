@@ -26,7 +26,7 @@ public class BaseEntity implements Serializable {
     private Date updateTime;
 
     @JsonIgnore
-    @TableLogic
+    @TableLogic  //逻辑删除字段标识
     @TableField("is_deleted")
     private Integer isDeleted;
 

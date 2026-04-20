@@ -1,12 +1,18 @@
 package com.atguigu.tingshu.album.config;
 
 
+import com.qcloud.vod.VodUploadClient;
+import com.tencentcloudapi.common.Credential;
+import com.tencentcloudapi.ims.v20201229.ImsClient;
+import com.tencentcloudapi.tms.v20201229.TmsClient;
+import com.tencentcloudapi.vod.v20180717.VodClient;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConfigurationProperties(prefix="vod") //读取节点
+@ConfigurationProperties(prefix = "vod") //读取节点
 @Data
 public class VodConstantProperties {
 
@@ -18,4 +24,34 @@ public class VodConstantProperties {
     private String procedure;
     private String tempPath;
     private String playKey;
+
+    @Bean
+    public VodUploadClient uploadClient() {
+        return new VodUploadClient(secretId, secretKey);
+    }
+
+    @Bean
+    public Credential credential() {
+        return new Credential(secretId, secretKey);
+    }
+
+    @Bean
+    public VodClient vodClient() {
+        return new VodClient(credential(), region);
+    }
+
+    /**
+     * 腾讯文本内容安全客户端对象
+     *
+     * @return
+     */
+    @Bean
+    public TmsClient tmsClient() {
+        return new TmsClient(credential(), region);
+    }
+
+    @Bean
+    public ImsClient imsClient() {
+        return new ImsClient(credential(), region);
+    }
 }

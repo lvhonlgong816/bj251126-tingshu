@@ -27,6 +27,7 @@ public enum ResultCodeEnum {
     LOGIN_MOBLE_ERROR( 216, "账号不正确"),
     ACCOUNT_STOP( 216, "账号已停用"),
     NODE_ERROR( 217, "该节点下有子节点，不可以删除"),
+    ALBUM_NODE_ERROR( 218, "该专辑下仍有未删除声音"),
 
     VOD_FILE_ID_ERROR( 220, "声音媒体id不正确"),
 

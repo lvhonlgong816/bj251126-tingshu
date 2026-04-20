@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Tag(name = "专辑管理")
 @RestController
 @RequestMapping("api/album")
@@ -70,5 +72,60 @@ public class AlbumInfoApiController {
 
 	}
 
+
+	/**
+	 * 查询当前用户发布专辑列表
+	 * @return
+	 */
+	@Operation(summary = "查询当前用户发布专辑列表")
+	@GetMapping("/albumInfo/findUserAllAlbumList")
+	public Result<List<AlbumInfo>> findUserAllAlbumList(){
+		//1.从ThreadLocal中获取用户ID
+		Long userId = AuthContextHolder.getUserId();
+		//2.调用业务层获取专辑列表
+		List<AlbumInfo> list = albumInfoService.findUserAllAlbumList(userId);
+		//3.响应数据
+		return Result.ok(list);
+
+	}
+
+
+	/**
+	 * 删除指定专辑
+	 * @param id 专辑ID
+	 * @return
+	 */
+	@Operation(summary = "删除专辑")
+	@DeleteMapping("/albumInfo/removeAlbumInfo/{id}")
+	public Result removeAlbumInfo(@PathVariable Long id){
+		albumInfoService.removeAlbumInfo(id);
+		return Result.ok();
+	}
+
+	/**
+	 * 查询专辑信息（包含标签列表）
+	 * @param id
+	 * @return
+	 */
+	@Operation(summary = "查询专辑信息（包含标签列表）")
+	@GetMapping("/albumInfo/getAlbumInfo/{id}")
+	public Result<AlbumInfo> getAlbumInfo(@PathVariable Long id){
+		AlbumInfo albumInfo = albumInfoService.getAlbumInfo(id);
+		return Result.ok(albumInfo);
+	}
+
+
+	/**
+	 * 修改专辑
+	 * @param id 专辑ID
+	 * @param albumInfoVo 修改专辑VO信息
+	 * @return
+	 */
+	@Operation(summary = "修改专辑")
+	@PutMapping("/albumInfo/updateAlbumInfo/{id}")
+	public Result updateAlbumInfo(@PathVariable Long id, @Validated @RequestBody AlbumInfoVo albumInfoVo){
+		albumInfoService.updateAlbumInfo(id, albumInfoVo);
+		return Result.ok();
+	}
 }
 

@@ -33,10 +33,10 @@ public class TrackListVo {
 	@Schema(description = "播放量")
 	private Integer playStatNum;
 
-	@Schema(description = "订阅量")
+	@Schema(description = "收藏量")
 	private Integer collectStatNum;
 
-	@Schema(description = "购买量")
+	@Schema(description = "点赞量")
 	private Integer praiseStatNum;
 
 	@Schema(description = "评论数")

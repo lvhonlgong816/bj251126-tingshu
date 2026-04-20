@@ -7,6 +7,8 @@ import com.atguigu.tingshu.vo.album.AlbumListVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.List;
+
 public interface AlbumInfoService extends IService<AlbumInfo> {
 
 
@@ -26,4 +28,33 @@ public interface AlbumInfoService extends IService<AlbumInfo> {
      * @return 分页对象
      */
     IPage<AlbumListVo> findUserAlbumPageByUserId(IPage<AlbumListVo> pageInfo, AlbumInfoQuery albumInfoQuery);
+
+    /**
+     * 删除指定专辑
+     * @param id 专辑ID
+     * @return
+     */
+    void removeAlbumInfo(Long id);
+
+    /**
+     * 查询专辑信息（包含标签列表）
+     * @param id
+     * @return
+     */
+    AlbumInfo getAlbumInfo(Long id);
+
+    /**
+     * 修改专辑
+     * @param id 专辑ID
+     * @param albumInfoVo 修改专辑VO信息
+     * @return
+     */
+    void updateAlbumInfo(Long id, AlbumInfoVo albumInfoVo);
+
+    /**
+     * 查询当前用户发布专辑列表
+     * @param userId
+     * @return
+     */
+    List<AlbumInfo> findUserAllAlbumList(Long userId);
 }
