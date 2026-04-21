@@ -1,6 +1,7 @@
 package com.atguigu.tingshu.album.api;
 
 import com.atguigu.tingshu.album.service.AlbumInfoService;
+import com.atguigu.tingshu.common.login.GuiGuLogin;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.album.AlbumInfo;
@@ -11,6 +12,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -28,12 +30,13 @@ public class AlbumInfoApiController {
 
 
 	/**
-	 * TODO 该接口必须登录才能访问
+	 * 该接口必须登录才能访问
 	 * 参数校验框架：@Validated 对请求体中VO中使用校验注解属性进行校验，底层基于AOP（前置通知）调用controller之前就会校验
 	 * 	校验成功才会调用controller方法，校验失败抛出异常，抛出的异常MethodArgumentNotValidException会进入全局异常处理类，返回给前端
 	 * @param albumInfoVo
 	 * @return
 	 */
+	@GuiGuLogin(required = true)  //调用该接口前必须得登录状态（校验），并且将用户ID设置到ThreadLocal中
 	@Operation(summary = "保存专辑（内容创作者或运营管理人员）")
 	@PostMapping("/albumInfo/saveAlbumInfo")
 	public Result saveAlbumInfo(@Validated @RequestBody AlbumInfoVo albumInfoVo) {
@@ -47,12 +50,13 @@ public class AlbumInfoApiController {
 
 
 	/**
-	 * TODO 该接口必须登录才能访问
+	 * 该接口必须登录才能访问
 	 * 分页查询当前用户专辑列表
 	 * @param page 页码
 	 * @param limit 页大小
 	 * @return 分页对象 列表中专辑信息（包含统计信息）
 	 */
+	@GuiGuLogin(required = true)
 	@Operation(summary = "分页查询当前用户专辑列表")
 	@PostMapping("/albumInfo/findUserAlbumPage/{page}/{limit}")
 	public Result<IPage<AlbumListVo>> findUserAlbumPageByUserId(@PathVariable Long page,

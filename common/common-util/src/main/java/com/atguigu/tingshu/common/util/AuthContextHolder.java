@@ -12,9 +12,7 @@ public class AuthContextHolder {
     }
 
     public static Long getUserId() {
-        //return userId.get();
-        //TODO 暂时将当前用户ID硬编码为：1 后续完成登录功能后，再从ThreadLocal中获取当前用户ID
-        return 1L;
+        return userId.get();
     }
 
     public static void removeUserId() {

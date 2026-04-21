@@ -2,6 +2,7 @@ package com.atguigu.tingshu.album.api;
 
 import com.atguigu.tingshu.album.service.TrackInfoService;
 import com.atguigu.tingshu.album.service.VodService;
+import com.atguigu.tingshu.common.login.GuiGuLogin;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.album.TrackInfo;
@@ -46,12 +47,13 @@ public class TrackInfoApiController {
 
 
     /**
-     * TODO 该接口必须登录才能访问
+     * 该接口必须登录才能访问
      * 保存声音
      *
      * @param trackInfoVo 声音信息vo
      * @return
      */
+    @GuiGuLogin
     @Operation(summary = "保存声音")
     @PostMapping("/trackInfo/saveTrackInfo")
     public Result saveTrackInfo(@Validated @RequestBody TrackInfoVo trackInfoVo) {
@@ -64,7 +66,7 @@ public class TrackInfoApiController {
 
 
     /**
-     * TODO 当前接口必须才能访问
+     * 当前接口必须才能访问
      * 条件分页查询当前用户声音列表
      *
      * @param page           页码
@@ -72,6 +74,7 @@ public class TrackInfoApiController {
      * @param trackInfoQuery 查询条件
      * @return MP分页对象
      */
+    @GuiGuLogin
     @Operation(summary = "条件分页查询当前用户声音列表")
     @PostMapping("/trackInfo/findUserTrackPage/{page}/{limit}")
     public Result<Page<TrackListVo>> findUserTrackPage(

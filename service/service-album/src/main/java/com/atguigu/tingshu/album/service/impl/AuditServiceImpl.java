@@ -59,6 +59,8 @@ public class AuditServiceImpl implements AuditService {
 
     /**
      * 对图片审核
+     *    高清大图：选择异步审核，会异步通知平台审核结果
+     *    小图缩略图：选择同步审核，直接获取审核建议
      *
      * @param auditImage Base64后图片
      * @return Block: 建议直接做违规处置，Review: 建议人工二次确认，Pass: 未识别到风险
