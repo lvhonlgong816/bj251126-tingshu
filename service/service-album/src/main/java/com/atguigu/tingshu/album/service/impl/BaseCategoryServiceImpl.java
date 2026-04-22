@@ -108,4 +108,14 @@ public class BaseCategoryServiceImpl extends ServiceImpl<BaseCategory1Mapper, Ba
 		//方式二：调用持久层执行动态SQL，进行两张表关联查询
 		return baseAttributeMapper.findAttribute(category1Id);
 	}
+
+	/**
+	 * 根据3级分类ID查询分类视图对象
+	 * @param category3Id
+	 * @return
+	 */
+	@Override
+	public BaseCategoryView getCategoryView(Long category3Id) {
+		return baseCategoryViewMapper.selectById(category3Id);
+	}
 }

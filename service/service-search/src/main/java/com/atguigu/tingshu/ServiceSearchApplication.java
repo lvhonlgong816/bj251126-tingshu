@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication(exclude = DataSourceAutoConfiguration.class)//取消数据源自动配置
 @EnableDiscoveryClient
-@EnableFeignClients
+@EnableFeignClients  //扫描feign接口产生代理对象
 @EnableAsync
 public class ServiceSearchApplication {
 

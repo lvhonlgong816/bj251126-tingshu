@@ -51,7 +51,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
     @Override
     public Map<String, String> wxLogin(String code) {
         try {
-            //1.调用微信接口获取微信账户唯一标识
+            //1.调用微信接口获取微信账户唯一标识 appid + secret + code 调用微信服务端
             WxMaJscode2SessionResult sessionInfo = wxMaService.getUserService().getSessionInfo(code);
             String wxOpenId = sessionInfo.getOpenid();
 

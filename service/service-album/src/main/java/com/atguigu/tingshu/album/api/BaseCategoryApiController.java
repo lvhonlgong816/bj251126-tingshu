@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.atguigu.tingshu.album.service.BaseCategoryService;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.model.album.BaseAttribute;
+import com.atguigu.tingshu.model.album.BaseCategoryView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.aspectj.weaver.ast.Var;
@@ -55,5 +56,16 @@ public class BaseCategoryApiController {
 		return Result.ok(list);
 	}
 
+	/**
+	 * 根据3级分类ID查询分类视图对象
+	 * @param category3Id
+	 * @return
+	 */
+	@Operation(summary = "根据3级分类ID查询分类视图对象")
+	@GetMapping("/category/getCategoryView/{category3Id}")
+	public Result<BaseCategoryView> getCategoryView(@PathVariable Long category3Id){
+		BaseCategoryView baseCategoryView = baseCategoryService.getCategoryView(category3Id);
+		return Result.ok(baseCategoryView);
+	}
 }
 

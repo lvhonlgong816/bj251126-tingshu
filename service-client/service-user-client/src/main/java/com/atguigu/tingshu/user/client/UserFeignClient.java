@@ -1,7 +1,11 @@
 package com.atguigu.tingshu.user.client;
 
+import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.user.client.impl.UserDegradeFeignClient;
+import com.atguigu.tingshu.vo.user.UserInfoVo;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 /**
  * <p>
@@ -10,7 +14,15 @@ import org.springframework.cloud.openfeign.FeignClient;
  *
  * @author atguigu
  */
-@FeignClient(value = "service-user", fallback = UserDegradeFeignClient.class)
+@FeignClient(value = "service-user",path = "api/user",fallback = UserDegradeFeignClient.class)
 public interface UserFeignClient {
+
+    /**
+     * 查询指定主播信息
+     * @param userId
+     * @return
+     */
+    @GetMapping("/userInfo/getUserInfoVo/{userId}")
+    public Result<UserInfoVo> getUserInfoVo(@PathVariable Long userId);
 
 }

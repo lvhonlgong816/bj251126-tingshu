@@ -11,6 +11,8 @@ import com.atguigu.tingshu.album.service.AlbumInfoService;
 import com.atguigu.tingshu.album.service.AuditService;
 import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.common.execption.GuiguException;
+import com.atguigu.tingshu.common.rabbit.constant.MqConst;
+import com.atguigu.tingshu.common.rabbit.service.RabbitService;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.album.AlbumAttributeValue;
 import com.atguigu.tingshu.model.album.AlbumInfo;
@@ -51,6 +53,9 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 
     @Autowired
     private AuditService auditService;
+
+    @Autowired
+    private RabbitService rabbitService;
 
     /**
      * 保存专辑信息
@@ -105,6 +110,9 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
             albumInfo.setStatus(ALBUM_STATUS_ARTIFICIAL);
         }else if("pass".equals(suggest)){
             albumInfo.setStatus(ALBUM_STATUS_PASS);
+            //TODO 5.同步将专辑信息保存到Elasticsearch索引库
+            //采用RabbitMQ可靠性消息 异步方式
+            rabbitService.sendMessage(MqConst.EXCHANGE_ALBUM, MqConst.ROUTING_ALBUM_UPPER, albumInfoId);
         }
         albumInfoMapper.updateById(albumInfo);
     }
@@ -173,6 +181,7 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
         );
 
         //TODO 同时将存在在ES索引库中专辑一并删除
+        rabbitService.sendMessage(MqConst.EXCHANGE_ALBUM, MqConst.ROUTING_ALBUM_LOWER, id);
     }
 
     /**
@@ -237,10 +246,12 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
         String suggest = auditService.auditText(text);
         if("block".equals(suggest)){
             albumInfo.setStatus(ALBUM_STATUS_NO_PASS);
+            rabbitService.sendMessage(MqConst.EXCHANGE_ALBUM, MqConst.ROUTING_ALBUM_LOWER, id);
         }else if("review".equals(suggest)){
             albumInfo.setStatus(ALBUM_STATUS_ARTIFICIAL);
         }else if("pass".equals(suggest)){
             albumInfo.setStatus(ALBUM_STATUS_PASS);
+            rabbitService.sendMessage(MqConst.EXCHANGE_ALBUM, MqConst.ROUTING_ALBUM_UPPER, id);
         }
         albumInfoMapper.updateById(albumInfo);
     }
