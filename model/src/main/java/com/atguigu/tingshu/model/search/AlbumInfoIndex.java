@@ -81,7 +81,7 @@ public class AlbumInfoIndex implements Serializable {
     @Field(type = FieldType.Double)
     private Double hotScore = 0d;
 
-    //专辑属性值
+    //标签列表
     // Nested 支持嵌套查询
     @Field(type = FieldType.Nested)
     private List<AttributeValueIndex> attributeValueIndexList;

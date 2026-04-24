@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
  *  http://localhost:8501/api/album/albumInfo/getAlbumInfo/{id}
  * 服务调用方使用确定请求地址：将目标服务实例列表缓存到本地
  *  1.从Feign接口中得到：http://service-album/api/album/albumInfo/getAlbumInfo/{id}
- *  2.从Nacos得到专辑服务service-album对应两个实例信息
+ *  2.从Nacos得到专辑服务service-album对应两个实例信息,缓存到调用方本地
  *      实例1：http://localhost:8501
  *      实例2：http://localhost:8401
  *  3.OpenFeign底层集成负载均衡器组件：LoadBalancer 默认轮询
