@@ -20,6 +20,7 @@
             ba.id,
             ba.attribute_name,
             bav.id base_attribute_value_id,
+            bav.attribute_id,
             bav.value_name
         from base_attribute ba inner join  base_attribute_value bav
                                            on bav.attribute_id = ba.id and bav.is_deleted = 0
