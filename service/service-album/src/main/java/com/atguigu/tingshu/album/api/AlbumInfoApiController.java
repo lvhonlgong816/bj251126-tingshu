@@ -8,6 +8,7 @@ import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.query.album.AlbumInfoQuery;
 import com.atguigu.tingshu.vo.album.AlbumInfoVo;
 import com.atguigu.tingshu.vo.album.AlbumListVo;
+import com.atguigu.tingshu.vo.album.AlbumStatVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
@@ -130,6 +131,19 @@ public class AlbumInfoApiController {
 	public Result updateAlbumInfo(@PathVariable Long id, @Validated @RequestBody AlbumInfoVo albumInfoVo){
 		albumInfoService.updateAlbumInfo(id, albumInfoVo);
 		return Result.ok();
+	}
+
+
+	/**
+	 * 根据专辑ID查询统计信息
+	 * @param albumId 专辑ID
+	 * @return 统计VO对象
+	 */
+	@Operation(summary = "根据专辑ID查询统计信息")
+	@GetMapping("/albumInfo/getAlbumStatVo/{albumId}")
+	public Result<AlbumStatVo> getAlbumStatVo(@PathVariable Long albumId){
+		AlbumStatVo vo = albumInfoService.getAlbumStatVo(albumId);
+		return Result.ok(vo);
 	}
 }
 

@@ -22,6 +22,7 @@ import com.atguigu.tingshu.query.album.AlbumInfoQuery;
 import com.atguigu.tingshu.vo.album.AlbumAttributeValueVo;
 import com.atguigu.tingshu.vo.album.AlbumInfoVo;
 import com.atguigu.tingshu.vo.album.AlbumListVo;
+import com.atguigu.tingshu.vo.album.AlbumStatVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -269,5 +270,15 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
                 .orderByDesc(AlbumInfo::getId)
                 .last("limit 200");
         return albumInfoMapper.selectList(queryWrapper);
+    }
+
+    /**
+     * 根据专辑ID查询统计信息
+     * @param albumId 专辑ID
+     * @return 统计VO对象
+     */
+    @Override
+    public AlbumStatVo getAlbumStatVo(Long albumId) {
+        return albumInfoMapper.getAlbumStatVo(albumId);
     }
 }

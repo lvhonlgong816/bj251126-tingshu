@@ -2,6 +2,7 @@ package com.atguigu.tingshu.common.threadpol;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
@@ -20,6 +21,7 @@ public class ThreadPoolConfig {
      * @return
      */
     @Bean
+    //@Primary
     public Executor threadPoolExecutor() {
         int i = Runtime.getRuntime().availableProcessors();
         int nThreads = i * 2;

@@ -3,9 +3,11 @@ package com.atguigu.tingshu.search.service;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import com.atguigu.tingshu.model.search.AlbumInfoIndex;
+import com.atguigu.tingshu.model.search.SuggestIndex;
 import com.atguigu.tingshu.query.search.AlbumIndexQuery;
 import com.atguigu.tingshu.vo.search.AlbumSearchResponseVo;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -57,4 +59,28 @@ public interface SearchService {
      * @return
      */
     List<Map<String, Object>> channel(Long category1Id);
+
+    /**
+     * 构建 提示词文档对象 存入提示词索引库
+     *
+     * @param id
+     * @param albumTitle
+     */
+    void saveSuggestInfo(Long id, String albumTitle);
+
+    /**
+     * 搜索自动补全
+     *
+     * @param keyword 用户已录入内容：汉字、拼音、拼音首字母
+     * @return 自动补全待选文本列表
+     */
+    List<String> completeSuggest(String keyword);
+
+    /**
+     * 解析自动补全结果
+     * @param searchResponse ES的结果
+     * @param suggest_name 自定义建议词名称
+     * @return 候选文本集合
+     */
+    Collection<String> parseSuggestResult(SearchResponse<SuggestIndex> searchResponse, String suggest_name);
 }

@@ -6,6 +6,7 @@ import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.BaseCategory3;
 import com.atguigu.tingshu.model.album.BaseCategoryView;
+import com.atguigu.tingshu.vo.album.AlbumStatVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +32,12 @@ public class AlbumDegradeFeignClient implements AlbumFeignClient {
     @Override
     public Result<List<BaseCategory3>> findTop7BaseCategory3(Long category1Id) {
         log.error("[专辑服务]提供远程调用接口findTop7BaseCategory3执行了服务降级");
+        return null;
+    }
+
+    @Override
+    public Result<AlbumStatVo> getAlbumStatVo(Long albumId) {
+        log.error("[专辑服务]提供远程调用接口getAlbumStatVo执行了服务降级");
         return null;
     }
 }
