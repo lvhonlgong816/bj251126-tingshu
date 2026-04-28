@@ -3,12 +3,17 @@ package com.atguigu.tingshu.user.service.impl;
 import cn.binarywang.wx.miniapp.api.WxMaService;
 import cn.binarywang.wx.miniapp.bean.WxMaJscode2SessionResult;
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
 import com.atguigu.tingshu.common.constant.RedisConstant;
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
 import com.atguigu.tingshu.common.rabbit.service.RabbitService;
 import com.atguigu.tingshu.model.user.UserInfo;
+import com.atguigu.tingshu.model.user.UserPaidAlbum;
+import com.atguigu.tingshu.model.user.UserPaidTrack;
 import com.atguigu.tingshu.user.mapper.UserInfoMapper;
+import com.atguigu.tingshu.user.mapper.UserPaidAlbumMapper;
+import com.atguigu.tingshu.user.mapper.UserPaidTrackMapper;
 import com.atguigu.tingshu.user.service.UserInfoService;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -22,8 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -75,7 +82,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
                 msgData.put("userId", userInfo.getId());
                 msgData.put("title", "新用户专项体验金");
                 msgData.put("amount", new BigDecimal("100"));
-                msgData.put("orderNo", "zs"+IdUtil.getSnowflakeNextId());
+                msgData.put("orderNo", "zs" + IdUtil.getSnowflakeNextId());
                 //3.2.2 调用生产者发送消息工具方法发送消息
                 rabbitService.sendMessage(MqConst.EXCHANGE_USER, MqConst.ROUTING_USER_REGISTER, msgData);
             }
@@ -113,7 +120,8 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 
     /**
      * 用户信息修改
-     * @param userId 用户ID
+     *
+     * @param userId     用户ID
      * @param userInfoVo 用户信息VO
      */
     @Override
@@ -126,5 +134,66 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
         userInfo.setAvatarUrl(userInfoVo.getAvatarUrl());
         //2.修改
         userInfoMapper.updateById(userInfo);
+    }
+
+    @Autowired
+    private UserPaidAlbumMapper userPaidAlbumMapper;
+
+    @Autowired
+    private UserPaidTrackMapper userPaidTrackMapper;
+
+    /**
+     * 查询指定用户某个专辑下声音购买状态
+     *
+     * @param userId                       用户ID
+     * @param albumId                      专辑ID
+     * @param needCheckPayStateTrackIdList 待检查购买状态声音ID列表
+     * @return {声音ID：购买状态}
+     */
+    @Override
+    public Map<Long, Integer> userIsPaidTrack(Long userId, Long albumId, List<Long> needCheckPayStateTrackIdList) {
+        HashMap<Long, Integer> map = new HashMap<>();
+        //1.根据用户ID+专辑ID查询专辑购买记录，如果存在购买记录 则购买状态直接返回1
+        Long count = userPaidAlbumMapper.selectCount(
+                new LambdaQueryWrapper<UserPaidAlbum>()
+                        .eq(UserPaidAlbum::getUserId, userId)
+                        .eq(UserPaidAlbum::getAlbumId, albumId)
+        );
+        if (count > 0) {
+            //遍历待检查声音ID列表 将每个声音购买状态设置为1 返回即可
+            for (Long trackId : needCheckPayStateTrackIdList) {
+                map.put(trackId, 1);
+            }
+            return map;
+        }
+
+        //2.根据用户ID+专辑ID查询声音购买记录
+        List<UserPaidTrack> userPaidTrackList = userPaidTrackMapper.selectList(
+                new LambdaQueryWrapper<UserPaidTrack>()
+                        .eq(UserPaidTrack::getUserId, userId)
+                        .eq(UserPaidTrack::getAlbumId, albumId)
+                        .select(UserPaidTrack::getTrackId)
+        );
+
+        //2.1 如果不存在声音购买记录 则购买状态直接返回0
+        if (CollUtil.isEmpty(userPaidTrackList)) {
+            //遍历待检查声音ID列表 将每个声音购买状态设置为0 返回即可
+            for (Long trackId : needCheckPayStateTrackIdList) {
+                map.put(trackId, 0);
+            }
+            return map;
+        }
+        //2.2 如果存在声音购买记录，已购买声音设置1 未购买设置为0
+        List<Long> userPaidTrackIdList =
+                userPaidTrackList.stream().map(UserPaidTrack::getTrackId).collect(Collectors.toList());
+        //遍历待检查声音ID列表 如果待检查声音ID出现在已购声音列表中 将购买状态设置1 反之 设置0
+        for (Long trackId : needCheckPayStateTrackIdList) {
+            if (userPaidTrackIdList.contains(trackId)) {
+                map.put(trackId, 1);
+            } else {
+                map.put(trackId, 0);
+            }
+        }
+        return map;
     }
 }

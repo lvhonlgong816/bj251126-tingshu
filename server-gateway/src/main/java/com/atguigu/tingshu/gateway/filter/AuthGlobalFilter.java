@@ -22,8 +22,8 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
-        String token = request.getHeaders().get("token").get(0);
-        log.info("AuthGlobalFilter:{}", token);
+        //String token = request.getHeaders().get("token").get(0);
+        //log.info("AuthGlobalFilter:{}", token);
         //TODO 根据token查询Redis用户信息
         return chain.filter(exchange);
     }

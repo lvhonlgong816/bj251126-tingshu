@@ -4,6 +4,7 @@ import com.atguigu.tingshu.model.user.UserInfo;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.List;
 import java.util.Map;
 
 public interface UserInfoService extends IService<UserInfo> {
@@ -29,4 +30,13 @@ public interface UserInfoService extends IService<UserInfo> {
      * @param userInfoVo 用户信息VO
      */
     void updateUser(Long userId, UserInfoVo userInfoVo);
+
+    /**
+     * 查询指定用户某个专辑下声音购买状态
+     * @param userId 用户ID
+     * @param albumId 专辑ID
+     * @param needCheckPayStateTrackIdList 待检查购买状态声音ID列表
+     * @return {声音ID：购买状态}
+     */
+    Map<Long, Integer> userIsPaidTrack(Long userId, Long albumId, List<Long> needCheckPayStateTrackIdList);
 }

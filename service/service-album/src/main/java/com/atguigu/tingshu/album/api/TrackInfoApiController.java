@@ -7,6 +7,7 @@ import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.query.album.TrackInfoQuery;
+import com.atguigu.tingshu.vo.album.AlbumTrackListVo;
 import com.atguigu.tingshu.vo.album.TrackInfoVo;
 import com.atguigu.tingshu.vo.album.TrackListVo;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -125,6 +126,33 @@ public class TrackInfoApiController {
     public Result removeTrackInfo(@PathVariable Long id){
         trackInfoService.removeTrackInfo(id);
         return Result.ok();
+    }
+
+
+    /**
+     * 该接口未登录，返回声音列表 如果用户已登录，根据当前用户身份、购买情况、专辑付费类型综合判断付费标识
+     * 分页获取专辑声音列表（动态判断付费标识）
+     * @param albumId
+     * @param page
+     * @param limit
+     * @return
+     */
+    @GuiGuLogin(required = false)
+    @Operation(summary = "分页获取专辑声音列表（动态判断付费标识）")
+    @GetMapping("/trackInfo/findAlbumTrackPage/{albumId}/{page}/{limit}")
+    public Result<Page<AlbumTrackListVo>> findAlbumTrackPage(
+            @PathVariable Long albumId,
+            @PathVariable Long page,
+            @PathVariable Long limit
+    ){
+        //1.获取当前用户ID
+        Long userId = AuthContextHolder.getUserId();
+        //2.封装MP分页对象 页码、页大小
+        Page<AlbumTrackListVo> pageInfo = new Page<>(page, limit);
+        //3.调用业务层查询分页相关数据
+        pageInfo = trackInfoService.findAlbumTrackPage(pageInfo, albumId, userId);
+        //4.返回结果
+        return Result.ok(pageInfo);
     }
 }
 

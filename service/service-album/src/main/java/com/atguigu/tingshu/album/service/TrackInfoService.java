@@ -2,8 +2,10 @@ package com.atguigu.tingshu.album.service;
 
 import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.query.album.TrackInfoQuery;
+import com.atguigu.tingshu.vo.album.AlbumTrackListVo;
 import com.atguigu.tingshu.vo.album.TrackInfoVo;
 import com.atguigu.tingshu.vo.album.TrackListVo;
+import com.atguigu.tingshu.vo.album.TrackStatMqVo;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -45,4 +47,20 @@ public interface TrackInfoService extends IService<TrackInfo> {
      * @param id 声音ID
      */
     void removeTrackInfo(Long id);
+
+    /**
+     * 该接口未登录，返回声音列表 如果用户已登录，根据当前用户身份、购买情况、专辑付费类型综合判断付费标识
+     * 分页获取专辑声音列表（动态判断付费标识）
+     * @param albumId 专辑ID
+     * @param pageInfo 分页对象
+     * @param userId 用户ID
+     * @return
+     */
+    Page<AlbumTrackListVo> findAlbumTrackPage(Page<AlbumTrackListVo> pageInfo, Long albumId, Long userId);
+
+    /**
+     * 更新声音以及所属专辑统计设置
+     * @param mqVo
+     */
+    void updateStat(TrackStatMqVo mqVo);
 }
