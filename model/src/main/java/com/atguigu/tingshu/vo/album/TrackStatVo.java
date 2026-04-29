@@ -14,7 +14,7 @@ public class TrackStatVo {
 	@Schema(description = "订阅量")
 	private Integer collectStatNum;
 
-	@Schema(description = "购买量")
+	@Schema(description = "点赞量")
 	private Integer praiseStatNum;
 
 	@Schema(description = "评论数")

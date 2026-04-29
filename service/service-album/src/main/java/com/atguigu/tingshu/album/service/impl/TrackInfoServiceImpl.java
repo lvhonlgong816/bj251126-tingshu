@@ -6,9 +6,11 @@ import com.atguigu.tingshu.album.mapper.AlbumInfoMapper;
 import com.atguigu.tingshu.album.mapper.AlbumStatMapper;
 import com.atguigu.tingshu.album.mapper.TrackInfoMapper;
 import com.atguigu.tingshu.album.mapper.TrackStatMapper;
+import com.atguigu.tingshu.album.service.AlbumInfoService;
 import com.atguigu.tingshu.album.service.AuditService;
 import com.atguigu.tingshu.album.service.TrackInfoService;
 import com.atguigu.tingshu.album.service.VodService;
+import com.atguigu.tingshu.common.cache.GuiGuCache;
 import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
 import com.atguigu.tingshu.model.album.AlbumInfo;
@@ -233,6 +235,9 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
     @Autowired
     private UserFeignClient userFeignClient;
 
+    @Autowired
+    private AlbumInfoService albumInfoService;
+
     /**
      * 该接口未登录，返回声音列表 如果用户已登录，根据当前用户身份、购买情况、专辑付费类型综合判断付费标识
      * 分页获取专辑声音列表（动态判断付费标识）
@@ -248,7 +253,8 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
         pageInfo = trackInfoMapper.findAlbumTrackPage(pageInfo, albumId);
 
         //2.根据专辑ID查询专辑信息 得到专辑付费类型、试听集数
-        AlbumInfo albumInfo = albumInfoMapper.selectById(albumId);
+        //AlbumInfo albumInfo = albumInfoMapper.selectById(albumId);
+        AlbumInfo albumInfo = albumInfoService.getAlbumInfo(albumId);
         //付费类型: 0101-免费、0102-vip免费、0103-付费
         String payType = albumInfo.getPayType();
         //专辑下试听集数
@@ -344,6 +350,17 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
                             .setSql("stat_num = stat_num +"+mqVo.getCount())
             );
         }
+    }
+
+    /**
+     * 获取声音统计数值
+     * @param trackId
+     * @return
+     */
+    @Override
+    @GuiGuCache(prefix = "track:stat:")
+    public TrackStatVo getTrackStatVo(Long trackId) {
+        return trackInfoMapper.getTrackStatVo(trackId);
     }
 
 

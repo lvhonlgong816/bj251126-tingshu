@@ -4,6 +4,7 @@ import cn.hutool.core.lang.Assert;
 import com.atguigu.tingshu.album.AlbumFeignClient;
 import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.BaseCategoryView;
+import com.atguigu.tingshu.model.search.AlbumInfoIndex;
 import com.atguigu.tingshu.search.service.ItemService;
 import com.atguigu.tingshu.user.client.UserFeignClient;
 import com.atguigu.tingshu.vo.album.AlbumStatVo;
@@ -11,10 +12,8 @@ import com.atguigu.tingshu.vo.user.UserInfoVo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -37,14 +36,14 @@ public class ItemServiceImpl implements ItemService {
      * required a single bean, but 2 were found:原因 自定义线程池对象、框架自带线程池对象
      * 解决办法：
      * 1.@Primary在声明对象指定主要Bean
-     * 2.@Autowired先按类型注入,再按Bean名称注入 eg：Executor threadPoolExecutor;
+     * 2.@Autowired先按类型注入,再按Bean名称注入 eg：Executor threadPoolTaskExecutor;
      * 3.@Autowired+@Qualifier(指定Bean的ID)
      * 4.@Resource 先按Bean名称注入，再按类注入
      */
     //@Autowired
-    //@Qualifier("threadPoolExecutor")
+    //@Qualifier("threadPoolTaskExecutor")
     @Resource
-    private Executor threadPoolExecutor;
+    private Executor threadPoolTaskExecutor;
 
 
     /**
@@ -65,7 +64,7 @@ public class ItemServiceImpl implements ItemService {
             //子线程写入Map
             map.put("albumInfo", albumInfo);
             return albumInfo;
-        }, threadPoolExecutor);
+        }, threadPoolTaskExecutor);
 
         //3.远程调用专辑服务获取分类信息
         CompletableFuture<Void> categoryCompletableFuture = albumInfoCompletableFuture.thenAcceptAsync(albumInfo -> {
@@ -73,7 +72,7 @@ public class ItemServiceImpl implements ItemService {
             Assert.notNull(baseCategoryView, "专辑{}分类{}不存在", albumId, albumInfo.getCategory3Id());
             //子线程写入Map
             map.put("baseCategoryView", baseCategoryView);
-        }, threadPoolExecutor);
+        }, threadPoolTaskExecutor);
 
         //4.远程调用专辑服务获取统计信息
         CompletableFuture<Void> statCompletableFuture = CompletableFuture.runAsync(() -> {
@@ -81,7 +80,7 @@ public class ItemServiceImpl implements ItemService {
             Assert.notNull(albumStatVo, "专辑{}统计不存在", albumId);
             //子线程写入Map
             map.put("albumStatVo", albumStatVo);
-        }, threadPoolExecutor);
+        }, threadPoolTaskExecutor);
 
         //5.远程调用用户服务获取主播信息
         CompletableFuture<Void> userCompletableFuture = albumInfoCompletableFuture.thenAcceptAsync(albumInfo -> {
@@ -89,7 +88,7 @@ public class ItemServiceImpl implements ItemService {
             Assert.notNull(userInfoVo, "专辑{}主播：{}信息缺失", albumId, albumInfo.getUserId());
             //子线程写入Map
             map.put("announcer", userInfoVo);
-        }, threadPoolExecutor);
+        }, threadPoolTaskExecutor);
 
 
         //6.组合所有异步任务

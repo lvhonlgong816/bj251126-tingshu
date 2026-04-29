@@ -3,7 +3,6 @@ package com.atguigu.tingshu.search.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
-import cn.hutool.core.util.RandomUtil;
 import cn.hutool.extra.pinyin.PinyinUtil;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;
@@ -17,10 +16,8 @@ import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.Suggestion;
 import com.alibaba.fastjson.JSON;
 import com.atguigu.tingshu.album.AlbumFeignClient;
-import com.atguigu.tingshu.model.album.AlbumAttributeValue;
-import com.atguigu.tingshu.model.album.AlbumInfo;
-import com.atguigu.tingshu.model.album.BaseCategory3;
-import com.atguigu.tingshu.model.album.BaseCategoryView;
+import com.atguigu.tingshu.common.constant.RedisConstant;
+import com.atguigu.tingshu.model.album.*;
 import com.atguigu.tingshu.model.search.AlbumInfoIndex;
 import com.atguigu.tingshu.model.search.AttributeValueIndex;
 import com.atguigu.tingshu.model.search.SuggestIndex;
@@ -37,6 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.elasticsearch.core.suggest.Completion;
+import org.springframework.data.redis.core.BoundHashOperations;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -78,7 +77,7 @@ public class SearchServiceImpl implements SearchService {
     @Override
     public void upperAlbum(Long albumId) {
         //1.创建索引库文档对象
-        AlbumInfoIndex albumInfoIndex = new AlbumInfoIndex();
+        AlbumInfoIndex albumInfoIndex = new com.atguigu.tingshu.model.search.AlbumInfoIndex();
 
         //2.封装专辑信息（包括标签列表） 创建需要返回结果异步任务对象
         CompletableFuture<AlbumInfo> albumInfoCompletableFuture = CompletableFuture.supplyAsync(() -> {
@@ -191,7 +190,7 @@ public class SearchServiceImpl implements SearchService {
             //System.err.println("本次检索DSL：");
             //System.err.println(searchRequest);
             //二、调用ES检索接口
-            SearchResponse<AlbumInfoIndex> searchResponse = elasticsearchClient.search(searchRequest, AlbumInfoIndex.class);
+            SearchResponse<com.atguigu.tingshu.model.search.AlbumInfoIndex> searchResponse = elasticsearchClient.search(searchRequest, com.atguigu.tingshu.model.search.AlbumInfoIndex.class);
             //三、解析ES检索结果
             return this.parseResult(searchResponse, albumIndexQuery);
         } catch (IOException e) {
@@ -305,7 +304,7 @@ public class SearchServiceImpl implements SearchService {
      * @return 结果VO
      */
     @Override
-    public AlbumSearchResponseVo parseResult(SearchResponse<AlbumInfoIndex> searchResponse, AlbumIndexQuery albumIndexQuery) {
+    public AlbumSearchResponseVo parseResult(SearchResponse<com.atguigu.tingshu.model.search.AlbumInfoIndex> searchResponse, AlbumIndexQuery albumIndexQuery) {
         //1.创建响应VO对象
         AlbumSearchResponseVo vo = new AlbumSearchResponseVo();
         //2.解析ES结果封装专辑VO列表
@@ -361,7 +360,7 @@ public class SearchServiceImpl implements SearchService {
 
 
             //2.执行聚合检索
-            SearchResponse<AlbumInfoIndex> searchResponse = elasticsearchClient.search(
+            SearchResponse<com.atguigu.tingshu.model.search.AlbumInfoIndex> searchResponse = elasticsearchClient.search(
                     s -> s.query(q -> q.terms(t -> t.field("category3Id").terms(t1 -> t1.value(fieldValueList))))
                             .size(0)
                             .aggregations("category3_agg", a -> a.terms(t -> t.field("category3Id").size(10))
@@ -373,7 +372,7 @@ public class SearchServiceImpl implements SearchService {
                                                     .source(s1 -> s1.filter(f -> f.excludes("subscribeStatNum", "buyStatNum", "commentStatNum", "attributeValueIndexList", "announcerName")))
                                     ))
                             ),
-                    AlbumInfoIndex.class
+                    com.atguigu.tingshu.model.search.AlbumInfoIndex.class
             );
             //3.解析ES聚合结果
             //3.1 获取三级分类聚合对象
@@ -388,10 +387,10 @@ public class SearchServiceImpl implements SearchService {
                         long category3Id = bucket.key();
                         map.put("baseCategory3", category3Map.get(category3Id));
                         //3.2.2 下钻获取tophits子聚合结果 获取top6专辑
-                        List<AlbumInfoIndex> top6List = bucket.aggregations().get("top6_agg")
+                        List<com.atguigu.tingshu.model.search.AlbumInfoIndex> top6List = bucket.aggregations().get("top6_agg")
                                 .topHits().hits().hits()
                                 .stream()
-                                .map(hit -> JSON.parseObject(hit.source().toString(), AlbumInfoIndex.class)
+                                .map(hit -> JSON.parseObject(hit.source().toString(), com.atguigu.tingshu.model.search.AlbumInfoIndex.class)
                                 ).collect(Collectors.toList());
                         //3.2.3 封装当前分类下 热度最高top6专辑列表
                         map.put("list", top6List);
@@ -450,15 +449,15 @@ public class SearchServiceImpl implements SearchService {
             //2.如果建议词结果数量小于10，尝试采用全文检索补全到10个
 
             if (hashSet.size() < 10) {
-                SearchResponse<AlbumInfoIndex> search = elasticsearchClient.search(s ->
+                SearchResponse<com.atguigu.tingshu.model.search.AlbumInfoIndex> search = elasticsearchClient.search(s ->
                                 s.query(q -> q.match(m -> m.field("albumTitle").query(keyword)))
                                         .size(10)
                                         .source(s1 -> s1.filter(f -> f.includes(Arrays.asList("albumTitle")))),
-                        AlbumInfoIndex.class);
-                List<Hit<AlbumInfoIndex>> hits = search.hits().hits();
+                        com.atguigu.tingshu.model.search.AlbumInfoIndex.class);
+                List<Hit<com.atguigu.tingshu.model.search.AlbumInfoIndex>> hits = search.hits().hits();
                 if (CollUtil.isNotEmpty(hits)) {
-                    for (Hit<AlbumInfoIndex> hit : hits) {
-                        AlbumInfoIndex albumInfoIndex = hit.source();
+                    for (Hit<com.atguigu.tingshu.model.search.AlbumInfoIndex> hit : hits) {
+                        com.atguigu.tingshu.model.search.AlbumInfoIndex albumInfoIndex = hit.source();
                         hashSet.add(albumInfoIndex.getAlbumTitle());
                         if (hashSet.size() >= 10) {
                             break;
@@ -498,5 +497,80 @@ public class SearchServiceImpl implements SearchService {
         return list;
     }
 
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    /**
+     * 从ES检索不同1级分类包含不同维度TOPN专辑记录，存入Redis Hash结构中
+     * 更新小时榜TOPN记录
+     *
+     * @return
+     */
+    @Override
+    public void updateLatelyAlbumRanking(Integer topN) {
+        try {
+            //1.远程调用 专辑服务 获取1级分类列表 获取1级分类ID列表
+            List<BaseCategory1> baseCategory1List = albumFeignClient.findAllCategory1().getData();
+            Assert.notNull(baseCategory1List, "暂无分类");
+
+
+            //2.执行ES检索 按照1级分类ID + 五种排序字段 获取TOPN记录
+            for (BaseCategory1 baseCategory1 : baseCategory1List) {
+                Long category1Id = baseCategory1.getId();
+                //基于1级分类ID 构建 Hash结构Key
+                String key = RedisConstant.RANKING_KEY_PREFIX + category1Id;
+                //创建绑定Hash操作对象
+                BoundHashOperations<String, String, List<AlbumInfoIndex>> hashOps = redisTemplate.boundHashOps(key);
+                String[] rankingDimensionArray
+                        = new String[]{"hotScore", "playStatNum", "subscribeStatNum", "buyStatNum", "commentStatNum"};
+                //2.1 执行ES检索
+                for (String dimension : rankingDimensionArray) {
+                    SearchResponse<AlbumInfoIndex> searchResponse = elasticsearchClient.search(
+                            s -> s.size(topN)
+                                    .query(q -> q.term(t -> t.field("category1Id").value(category1Id)))
+                                    .sort(s1 -> s1.field(f -> f.field(dimension).order(SortOrder.Desc)))
+                                    .source(s1 -> s1.filter(f -> f.includes(Arrays.asList("id", "payType", "albumTitle", "albumIntro", "includeTrackCount", "playStatNum", "coverUrl")))),
+                            AlbumInfoIndex.class
+                    );
+                    //3.将小时榜数据存入Redis Hash中
+                    //3.1 构建Hash内部 fidld(hashKey) 标识排序维度
+                    String field = dimension;
+                    //3.2 从ES检索结果获取TOPN专辑列表
+                    List<Hit<AlbumInfoIndex>> hits = searchResponse.hits().hits();
+                    if (CollUtil.isNotEmpty(hits)) {
+                        List<AlbumInfoIndex> topNList = hits.stream().map(hit -> hit.source())
+                                .collect(Collectors.toList());
+                        //3.3 写入Redis
+                        //redisTemplate.opsForHash().put(key, field, topNList);
+                        hashOps.put(field, topNList);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            log.error("更新小时排行榜异常", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 从Redis获取不同分类不同维度TOPN记录
+     *
+     * @param category1Id
+     * @param dimension
+     * @return
+     */
+    @Override
+    public List<AlbumInfoIndex> findRankingList(Long category1Id, String dimension) {
+        //基于1级分类ID 构建 Hash结构Key
+        String key = RedisConstant.RANKING_KEY_PREFIX + category1Id;
+        //创建绑定Hash操作对象
+        BoundHashOperations<String, String, List<AlbumInfoIndex>> hashOps = redisTemplate.boundHashOps(key);
+        String field = dimension;
+        if (hashOps.hasKey(field)) {
+            List<AlbumInfoIndex> list = hashOps.get(field);
+            return list;
+        }
+        return List.of();
+    }
 
 }

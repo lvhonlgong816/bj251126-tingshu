@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 @Tag(name = "用户声音播放进度管理接口")
 @RestController
@@ -57,6 +58,22 @@ public class UserListenProcessApiController {
             userListenProcessService.updateListenProcess(userId, userListenProcessVo);
         }
         return Result.ok();
+    }
+
+    /**
+     * 查询当前用户最近播放专辑/声音
+     * @return {"albumId“："","trackId":""}
+     */
+    @GuiGuLogin
+    @Operation(summary = "查询当前用户最近播放专辑/声音")
+    @GetMapping("/userListenProcess/getLatelyTrack")
+    public Result<Map<String, Long>> getLatelyTrack(){
+        //1.获取用户ID
+        Long userId = AuthContextHolder.getUserId();
+        //2.业务处理
+        Map<String, Long> map = userListenProcessService.getLatelyTrack(userId);
+        return Result.ok(map);
+
     }
 }
 

@@ -2,6 +2,7 @@ package com.atguigu.tingshu.album.api;
 
 import com.atguigu.tingshu.album.service.TrackInfoService;
 import com.atguigu.tingshu.album.service.VodService;
+import com.atguigu.tingshu.common.cache.GuiGuCache;
 import com.atguigu.tingshu.common.login.GuiGuLogin;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
@@ -10,6 +11,7 @@ import com.atguigu.tingshu.query.album.TrackInfoQuery;
 import com.atguigu.tingshu.vo.album.AlbumTrackListVo;
 import com.atguigu.tingshu.vo.album.TrackInfoVo;
 import com.atguigu.tingshu.vo.album.TrackListVo;
+import com.atguigu.tingshu.vo.album.TrackStatVo;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -102,6 +104,7 @@ public class TrackInfoApiController {
      */
     @Operation(summary = "根据声音ID查询声音信息")
     @GetMapping("/trackInfo/getTrackInfo/{id}")
+    @GuiGuCache(prefix = "track:info:")
     public Result<TrackInfo> getTrackInfo(@PathVariable Long id){
         TrackInfo trackInfo = trackInfoService.getById(id);
         return Result.ok(trackInfo);
@@ -153,6 +156,19 @@ public class TrackInfoApiController {
         pageInfo = trackInfoService.findAlbumTrackPage(pageInfo, albumId, userId);
         //4.返回结果
         return Result.ok(pageInfo);
+    }
+
+
+    /**
+     * 获取声音统计数值
+     * @param trackId
+     * @return
+     */
+    @Operation(summary = "获取声音统计数值")
+    @GetMapping("/trackInfo/getTrackStatVo/{trackId}")
+    public Result<TrackStatVo> getTrackStatVo(@PathVariable Long trackId){
+        TrackStatVo vo = trackInfoService.getTrackStatVo(trackId);
+        return Result.ok(vo);
     }
 }
 

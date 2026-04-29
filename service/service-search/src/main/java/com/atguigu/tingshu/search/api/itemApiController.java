@@ -1,8 +1,8 @@
 package com.atguigu.tingshu.search.api;
 
 import com.atguigu.tingshu.common.result.Result;
-import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.BaseCategoryView;
+import com.atguigu.tingshu.model.search.AlbumInfoIndex;
 import com.atguigu.tingshu.search.service.ItemService;
 import com.atguigu.tingshu.vo.album.AlbumStatVo;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
@@ -44,7 +44,7 @@ public class itemApiController {
 @Data
 class AlbumInfoItem{
 	private UserInfoVo announcer;
-	private AlbumInfo albumInfo;
+	private AlbumInfoIndex albumInfo;
 	private AlbumStatVo albumStatVo;
 	private BaseCategoryView baseCategoryView;
 }

@@ -5,6 +5,7 @@ import cn.binarywang.wx.miniapp.bean.WxMaJscode2SessionResult;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
+import com.atguigu.tingshu.common.cache.GuiGuCache;
 import com.atguigu.tingshu.common.constant.RedisConstant;
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
 import com.atguigu.tingshu.common.rabbit.service.RabbitService;
@@ -110,6 +111,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
      * @return
      */
     @Override
+    @GuiGuCache(prefix = "user:info:")
     public UserInfoVo getUserInfo(Long userId) {
         UserInfo userInfo = this.getById(userId);
         if (userInfo != null) {

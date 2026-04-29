@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.atguigu.tingshu.album.mapper.*;
 import com.atguigu.tingshu.album.service.BaseCategoryService;
+import com.atguigu.tingshu.common.cache.GuiGuCache;
 import com.atguigu.tingshu.model.album.*;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -37,6 +38,7 @@ public class BaseCategoryServiceImpl extends ServiceImpl<BaseCategory1Mapper, Ba
      * @return
      */
     @Override
+    @GuiGuCache(prefix = "category:allcategorys:")
     public List<JSONObject> getBaseCategoryList() {
         //1.查询分类视图所有记录 共计401条记录
         List<BaseCategoryView> allCategoryViewList = baseCategoryViewMapper.selectList(null);
@@ -104,6 +106,7 @@ public class BaseCategoryServiceImpl extends ServiceImpl<BaseCategory1Mapper, Ba
      * @return 标签列表
      */
     @Override
+    @GuiGuCache(prefix = "category:attribute:")
     public List<BaseAttribute> findAttribute(Long category1Id) {
         //方式一：根据1级分类ID查询标签列表、遍历标签列表，根据标签ID查询标签值列表 问题：SQL执行次数过多
         //方式二：调用持久层执行动态SQL，进行两张表关联查询
@@ -117,6 +120,7 @@ public class BaseCategoryServiceImpl extends ServiceImpl<BaseCategory1Mapper, Ba
      * @return
      */
     @Override
+    @GuiGuCache(prefix = "category:categoryview")
     public BaseCategoryView getCategoryView(Long category3Id) {
         return baseCategoryViewMapper.selectById(category3Id);
     }
@@ -128,6 +132,7 @@ public class BaseCategoryServiceImpl extends ServiceImpl<BaseCategory1Mapper, Ba
      * @return 三级分类列表
      */
     @Override
+    @GuiGuCache(prefix = "category:top7:")
     public List<BaseCategory3> findTop7BaseCategory3(Long category1Id) {
         //1.根据1级分类ID查询二级分类ID列表
         List<BaseCategory2> baseCategory2List = baseCategory2Mapper.selectList(
@@ -156,6 +161,7 @@ public class BaseCategoryServiceImpl extends ServiceImpl<BaseCategory1Mapper, Ba
      * @return 1级分类对象 包含2,3级分类列表
      */
     @Override
+    @GuiGuCache(prefix = "category:category1:")
     public JSONObject getBaseCategoryListByCategory1Id(Long category1Id) {
         //1.处理1级分类JSON对象
         //1.1 创建1级分类JSON对象

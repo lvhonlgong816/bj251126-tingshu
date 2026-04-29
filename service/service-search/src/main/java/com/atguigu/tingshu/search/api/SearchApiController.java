@@ -1,14 +1,12 @@
 package com.atguigu.tingshu.search.api;
 
 import com.atguigu.tingshu.common.result.Result;
-import com.atguigu.tingshu.model.album.AlbumInfo;
-import com.atguigu.tingshu.model.album.BaseCategory3;
+import com.atguigu.tingshu.model.search.AlbumInfoIndex;
 import com.atguigu.tingshu.query.search.AlbumIndexQuery;
 import com.atguigu.tingshu.search.service.SearchService;
 import com.atguigu.tingshu.vo.search.AlbumSearchResponseVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -93,6 +91,30 @@ public class SearchApiController {
         return Result.ok(list);
     }
 
+    /**
+     * 更新小时榜TOPN记录
+     * @return
+     */
+    @Operation(summary = "更新小时榜TOPN记录")
+    @GetMapping("/albumInfo/updateLatelyAlbumRanking/{topN}")
+    public Result updateLatelyAlbumRanking(@PathVariable Integer topN){
+        searchService.updateLatelyAlbumRanking(topN);
+        return Result.ok();
+    }
+
+
+    /**
+     * 从Redis获取不同分类不同维度TOPN记录
+     * @param category1Id
+     * @param dimension
+     * @return
+     */
+    @Operation(summary = "获取不同分类不同维度TOPN记录")
+    @GetMapping("/albumInfo/findRankingList/{category1Id}/{dimension}")
+    public Result<List<AlbumInfoIndex>> findRankingList(@PathVariable Long category1Id, @PathVariable String dimension){
+        List<AlbumInfoIndex> list = searchService.findRankingList(category1Id, dimension);
+        return Result.ok(list);
+    }
 
 }
 //@Data

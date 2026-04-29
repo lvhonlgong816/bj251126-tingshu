@@ -2,6 +2,7 @@ package com.atguigu.tingshu.album.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.RandomUtil;
 import com.atguigu.tingshu.album.mapper.AlbumAttributeValueMapper;
 import com.atguigu.tingshu.album.mapper.AlbumInfoMapper;
 import com.atguigu.tingshu.album.mapper.AlbumStatMapper;
@@ -9,6 +10,8 @@ import com.atguigu.tingshu.album.mapper.TrackInfoMapper;
 import com.atguigu.tingshu.album.service.AlbumAttributeValueService;
 import com.atguigu.tingshu.album.service.AlbumInfoService;
 import com.atguigu.tingshu.album.service.AuditService;
+import com.atguigu.tingshu.common.cache.GuiGuCache;
+import com.atguigu.tingshu.common.constant.RedisConstant;
 import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.common.execption.GuiguException;
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
@@ -18,6 +21,7 @@ import com.atguigu.tingshu.model.album.AlbumAttributeValue;
 import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.AlbumStat;
 import com.atguigu.tingshu.model.album.TrackInfo;
+import com.atguigu.tingshu.model.search.AlbumInfoIndex;
 import com.atguigu.tingshu.query.album.AlbumInfoQuery;
 import com.atguigu.tingshu.vo.album.AlbumAttributeValueVo;
 import com.atguigu.tingshu.vo.album.AlbumInfoVo;
@@ -27,13 +31,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -105,11 +113,11 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
         // 4. 对新增专辑中文本：标题跟简介需要进行内容校验
         String text = albumInfo.getAlbumTitle() + albumInfo.getAlbumIntro();
         String suggest = auditService.auditText(text);
-        if("block".equals(suggest)){
+        if ("block".equals(suggest)) {
             albumInfo.setStatus(ALBUM_STATUS_NO_PASS);
-        }else if("review".equals(suggest)){
+        } else if ("review".equals(suggest)) {
             albumInfo.setStatus(ALBUM_STATUS_ARTIFICIAL);
-        }else if("pass".equals(suggest)){
+        } else if ("pass".equals(suggest)) {
             albumInfo.setStatus(ALBUM_STATUS_PASS);
             //TODO 5.同步将专辑信息保存到Elasticsearch索引库
             //采用RabbitMQ可靠性消息 异步方式
@@ -187,11 +195,13 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 
     /**
      * 查询专辑信息（包含标签列表）
+     *
      * @param id
      * @return
      */
     @Override
-    public AlbumInfo getAlbumInfo(Long id) {
+    @GuiGuCache(prefix = RedisConstant.ALBUM_INFO_PREFIX, ttl = RedisConstant.ALBUM_TIMEOUT, timeUnit = TimeUnit.SECONDS)
+    public AlbumInfo getAlbumInfoFromDB(Long id) {
         //1.根据专辑ID查询专辑信息
         AlbumInfo albumInfo = this.getById(id);
         //2.根据专辑ID查询标签关系列表 将列表封装到信息对象中
@@ -199,15 +209,76 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
                 new LambdaQueryWrapper<AlbumAttributeValue>()
                         .eq(AlbumAttributeValue::getAlbumId, id)
         );
-        if(CollUtil.isNotEmpty(albumAttributeValueList)){
+        if (CollUtil.isNotEmpty(albumAttributeValueList)) {
             albumInfo.setAlbumAttributeValueVoList(albumAttributeValueList);
         }
         return albumInfo;
     }
 
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    @Autowired
+    private RedissonClient redissonClient;
+
+    /**
+     * 查询专辑信息，引入缓存提升性能 采用分布式锁避免缓存击穿问题
+     *
+     * @param id
+     * @return
+     */
+    @Override
+    public AlbumInfo getAlbumInfo(Long id) {
+        try {
+            //1.优先从Redis获取业务数据 命中则直接返回结果
+            //1.1 定义业务数据Key 形式=前缀+业务数据标识
+            String dataKey = RedisConstant.ALBUM_INFO_PREFIX + id;
+            //1.2 从Redis获取业务数据
+            AlbumInfo albumInfo = (AlbumInfo) redisTemplate.opsForValue().get(dataKey);
+            if (albumInfo != null) {
+                return albumInfo;
+            }
+            //2.如果缓存未命中，获取分布式锁
+            //2.1 定义锁的Key 形式=业务Key+锁后缀 锁粒度尽可能细
+            String lockKey = dataKey + RedisConstant.CACHE_LOCK_SUFFIX;
+            //2.2 创建锁对象
+            RLock lock = redissonClient.getLock(lockKey);
+
+            //2.2 尝试获取分布式锁 p1:获取锁等待时间  p2:加锁成功后锁释放时间 p3:时间单位
+            boolean flag = lock.tryLock(
+                    RedisConstant.ALBUM_LOCK_WAIT_PX1,
+                    RedisConstant.ALBUM_LOCK_EXPIRE_PX2,
+                    TimeUnit.SECONDS
+            );
+            //3.获取锁成功，则执行业务（查询DB，放入Redis,释放锁）
+            if (flag) {
+                try {
+                    //3.1 去执行数据库查询
+                    albumInfo = this.getAlbumInfoFromDB(id);
+                    //3.2 将查询数据放入缓存 解决缓存雪崩问题，缓存有效时间设置为：基础时间+随机时间
+                    long ttl = RedisConstant.ALBUM_TIMEOUT + RandomUtil.randomInt(300, 600);
+                    redisTemplate.opsForValue().set(dataKey, albumInfo, ttl, TimeUnit.SECONDS);
+                    return albumInfo;
+                } finally {
+                    //3.3 业务结束释放锁
+                    lock.unlock();
+                }
+            } else {
+                //4.获取锁失败，自旋
+                TimeUnit.MILLISECONDS.sleep(50);
+                return this.getAlbumInfo(id);
+            }
+        } catch (Exception e) {
+            log.error("Redis服务不可用", e);
+            //如果Redis服务有异常，兜底处理：直接查询数据库
+            return this.getAlbumInfoFromDB(id);
+        }
+    }
+
     /**
      * 修改专辑
-     * @param id 专辑ID
+     *
+     * @param id          专辑ID
      * @param albumInfoVo 修改专辑VO信息
      * @return
      */
@@ -232,7 +303,7 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
         );
         //2.2 将信提交标签列表封装成标签关系列表
         List<AlbumAttributeValueVo> albumAttributeValueVoList = albumInfoVo.getAlbumAttributeValueVoList();
-        if(CollUtil.isNotEmpty(albumAttributeValueVoList)){
+        if (CollUtil.isNotEmpty(albumAttributeValueVoList)) {
             List<AlbumAttributeValue> albumAttributeValueList = albumAttributeValueVoList
                     .stream()
                     .map(vo -> {
@@ -245,12 +316,12 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
         // 3. 对修改专辑中文本：标题跟简介需要进行内容校验
         String text = albumInfo.getAlbumTitle() + albumInfo.getAlbumIntro();
         String suggest = auditService.auditText(text);
-        if("block".equals(suggest)){
+        if ("block".equals(suggest)) {
             albumInfo.setStatus(ALBUM_STATUS_NO_PASS);
             rabbitService.sendMessage(MqConst.EXCHANGE_ALBUM, MqConst.ROUTING_ALBUM_LOWER, id);
-        }else if("review".equals(suggest)){
+        } else if ("review".equals(suggest)) {
             albumInfo.setStatus(ALBUM_STATUS_ARTIFICIAL);
-        }else if("pass".equals(suggest)){
+        } else if ("pass".equals(suggest)) {
             albumInfo.setStatus(ALBUM_STATUS_PASS);
             rabbitService.sendMessage(MqConst.EXCHANGE_ALBUM, MqConst.ROUTING_ALBUM_UPPER, id);
         }
@@ -259,6 +330,7 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 
     /**
      * 查询当前用户发布专辑列表
+     *
      * @param userId
      * @return
      */
@@ -274,10 +346,12 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 
     /**
      * 根据专辑ID查询统计信息
+     *
      * @param albumId 专辑ID
      * @return 统计VO对象
      */
     @Override
+    @GuiGuCache(prefix = RedisConstant.ALBUM_INFO_PREFIX+"stat:")
     public AlbumStatVo getAlbumStatVo(Long albumId) {
         return albumInfoMapper.getAlbumStatVo(albumId);
     }

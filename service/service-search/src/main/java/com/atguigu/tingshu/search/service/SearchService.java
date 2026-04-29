@@ -51,7 +51,7 @@ public interface SearchService {
      * @param albumIndexQuery 查询条件 需要获取分页参数
      * @return 结果VO
      */
-    AlbumSearchResponseVo parseResult(SearchResponse<AlbumInfoIndex> searchResponse, AlbumIndexQuery albumIndexQuery);
+    AlbumSearchResponseVo parseResult(SearchResponse<com.atguigu.tingshu.model.search.AlbumInfoIndex> searchResponse, AlbumIndexQuery albumIndexQuery);
 
     /**
      * 查询置顶三级分类包含热门专辑列表
@@ -83,4 +83,18 @@ public interface SearchService {
      * @return 候选文本集合
      */
     Collection<String> parseSuggestResult(SearchResponse<SuggestIndex> searchResponse, String suggest_name);
+
+    /**
+     * 更新小时榜TOPN记录
+     * @return
+     */
+    void updateLatelyAlbumRanking(Integer topN);
+
+    /**
+     * 从Redis获取不同分类不同维度TOPN记录
+     * @param category1Id
+     * @param dimension
+     * @return
+     */
+    List<AlbumInfoIndex> findRankingList(Long category1Id, String dimension);
 }

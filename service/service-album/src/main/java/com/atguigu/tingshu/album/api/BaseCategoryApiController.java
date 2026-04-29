@@ -2,8 +2,10 @@ package com.atguigu.tingshu.album.api;
 
 import com.alibaba.fastjson.JSONObject;
 import com.atguigu.tingshu.album.service.BaseCategoryService;
+import com.atguigu.tingshu.common.cache.GuiGuCache;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.model.album.BaseAttribute;
+import com.atguigu.tingshu.model.album.BaseCategory1;
 import com.atguigu.tingshu.model.album.BaseCategory3;
 import com.atguigu.tingshu.model.album.BaseCategoryView;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,7 +34,7 @@ public class BaseCategoryApiController {
 
 
 	/**
-	 * TODO 后续使用Redis缓存
+	 *  后续使用Redis缓存
 	 * 查询所有1,2,3级分类列表
 	 * @return
 	 */
@@ -47,7 +49,7 @@ public class BaseCategoryApiController {
 
 
 	/**
-	 * TODO 后续使用Redis缓存
+	 *  后续使用Redis缓存
 	 * 根据1级分类ID查询标签列表（包含标签值列表）
 	 * @param category1Id 1级分类ID
 	 * @return 标签列表
@@ -60,7 +62,7 @@ public class BaseCategoryApiController {
 	}
 
 	/**
-	 * TODO 后续使用Redis缓存
+	 * 后续使用Redis缓存
 	 * 根据3级分类ID查询分类视图对象
 	 * @param category3Id
 	 * @return
@@ -74,7 +76,7 @@ public class BaseCategoryApiController {
 
 
 	/**
-	 * TODO 后续使用Redis缓存
+	 * 后续使用Redis缓存
 	 * 根据1级分类ID查询置顶前七个三级分类列表
 	 * @param category1Id 1级分类ID
 	 * @return 三级分类列表
@@ -87,7 +89,7 @@ public class BaseCategoryApiController {
 	}
 
 	/**
-	 * TODO 后续使用Redis缓存
+	 * 后续使用Redis缓存
 	 * 查询1级分类下包含所有2,3级分类列表
 	 * @param category1Id
 	 * @return 1级分类对象 包含2,3级分类列表
@@ -97,6 +99,14 @@ public class BaseCategoryApiController {
 	public Result<JSONObject> getBaseCategoryListByCategory1Id(@PathVariable Long category1Id){
 		JSONObject jsonObject = baseCategoryService.getBaseCategoryListByCategory1Id(category1Id);
 		return Result.ok(jsonObject);
+	}
+
+	@Operation(summary = "查询所有1级分类列表")
+	@GetMapping("/category/findAllCategory1")
+	@GuiGuCache(prefix = "category:category1list")
+	public Result<List<BaseCategory1>> findAllCategory1(){
+		List<BaseCategory1> list = baseCategoryService.list();
+		return Result.ok(list);
 	}
 }
 

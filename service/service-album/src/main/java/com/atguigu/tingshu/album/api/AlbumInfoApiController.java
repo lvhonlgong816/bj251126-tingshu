@@ -13,7 +13,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -115,7 +114,7 @@ public class AlbumInfoApiController {
 	@Operation(summary = "查询专辑信息（包含标签列表）")
 	@GetMapping("/albumInfo/getAlbumInfo/{id}")
 	public Result<AlbumInfo> getAlbumInfo(@PathVariable Long id){
-		AlbumInfo albumInfo = albumInfoService.getAlbumInfo(id);
+		AlbumInfo albumInfo = albumInfoService.getAlbumInfoFromDB(id);
 		return Result.ok(albumInfo);
 	}
 

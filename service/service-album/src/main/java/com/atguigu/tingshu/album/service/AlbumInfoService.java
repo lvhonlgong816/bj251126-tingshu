@@ -42,6 +42,14 @@ public interface AlbumInfoService extends IService<AlbumInfo> {
      * @param id
      * @return
      */
+    AlbumInfo getAlbumInfoFromDB(Long id);
+
+
+    /**
+     * 查询专辑信息，引入缓存提升性能 采用分布式锁避免缓存击穿问题
+     * @param id
+     * @return
+     */
     AlbumInfo getAlbumInfo(Long id);
 
     /**
@@ -65,4 +73,6 @@ public interface AlbumInfoService extends IService<AlbumInfo> {
      * @return 统计VO对象
      */
     AlbumStatVo getAlbumStatVo(Long albumId);
+
+
 }
