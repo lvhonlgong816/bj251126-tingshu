@@ -32,6 +32,8 @@ import com.atguigu.tingshu.vo.search.AlbumSearchResponseVo;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.redisson.api.RBloomFilter;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.elasticsearch.core.suggest.Completion;
 import org.springframework.data.redis.core.BoundHashOperations;
@@ -152,7 +154,14 @@ public class SearchServiceImpl implements SearchService {
 
         //7.将专辑标题 构建 提示词文档对象 存入提示词索引库
         this.saveSuggestInfo(albumInfoIndex.getId(), albumInfoIndex.getAlbumTitle());
+
+        //8.将专辑ID存入布隆过滤器  产生实际存放二进制向量bitmap位图
+        RBloomFilter<Long> bloomFilter = redissonClient.getBloomFilter(RedisConstant.ALBUM_BLOOM_FILTER);
+        bloomFilter.add(albumId);
     }
+
+    @Autowired
+    private RedissonClient redissonClient;
 
 
     /**

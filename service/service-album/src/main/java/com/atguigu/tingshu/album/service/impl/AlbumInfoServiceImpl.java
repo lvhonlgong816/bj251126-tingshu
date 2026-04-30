@@ -31,6 +31,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
@@ -45,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.atguigu.tingshu.common.constant.RedisConstant.ALBUM_BLOOM_FILTER;
 import static com.atguigu.tingshu.common.constant.SystemConstant.*;
 import static com.atguigu.tingshu.common.result.ResultCodeEnum.ALBUM_NODE_ERROR;
 import static com.atguigu.tingshu.common.result.ResultCodeEnum.NODE_ERROR;
@@ -238,6 +240,8 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
             if (albumInfo != null) {
                 return albumInfo;
             }
+
+            //TODO 直接查数据库 并发请求同时请求
             //2.如果缓存未命中，获取分布式锁
             //2.1 定义锁的Key 形式=业务Key+锁后缀 锁粒度尽可能细
             String lockKey = dataKey + RedisConstant.CACHE_LOCK_SUFFIX;
@@ -351,8 +355,65 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
      * @return 统计VO对象
      */
     @Override
-    @GuiGuCache(prefix = RedisConstant.ALBUM_INFO_PREFIX+"stat:")
+    @GuiGuCache(prefix = RedisConstant.ALBUM_INFO_PREFIX + "stat:")
     public AlbumStatVo getAlbumStatVo(Long albumId) {
         return albumInfoMapper.getAlbumStatVo(albumId);
+    }
+
+    /**
+     * 在项目维护期间，重建/扩容布隆过滤器
+     */
+    @Override
+    public void rebuildBloomFilter() {
+        //1.获取原有的布隆过滤器对象 得到配置信息
+        RBloomFilter<Long> oldBloomFilter = redissonClient.getBloomFilter(ALBUM_BLOOM_FILTER);
+        long expectedInsertions = oldBloomFilter.getExpectedInsertions();
+        double falseProbability = oldBloomFilter.getFalseProbability();
+        //非精确数量
+        long count = oldBloomFilter.count();
+        //2.判断现有数据规模是否超过期望数据规模
+        //3.超过：扩容重建
+        if (count > 1000) {
+            //3.1 删除旧布隆过滤器
+            oldBloomFilter.delete();
+            //3.1 创建初始化新布隆过滤器 旧期望数据规模*2 其他配置保留
+            RBloomFilter<Long> newBloomFilter = redissonClient.getBloomFilter(ALBUM_BLOOM_FILTER + ":new");
+            newBloomFilter.tryInit(expectedInsertions * 2, falseProbability);
+
+            //3.2 查询DB过审专辑ID列表，将专辑ID存入新布隆过滤器
+            List<AlbumInfo> list = this.list(
+                    new LambdaQueryWrapper<AlbumInfo>()
+                            .eq(AlbumInfo::getStatus, SystemConstant.ALBUM_STATUS_PASS)
+                            .select(AlbumInfo::getId)
+            );
+            if (CollUtil.isNotEmpty(list)) {
+                for (AlbumInfo albumInfo : list) {
+                    newBloomFilter.add(albumInfo.getId());
+                }
+                //3.3 重命名改为原来布隆过滤器名称
+                newBloomFilter.rename(ALBUM_BLOOM_FILTER);
+            }
+        } else {
+            //4.未超过：重建即可
+            //4.1 删除旧布隆过滤器
+            oldBloomFilter.delete();
+            //4.1 创建初始化新布隆过滤器 旧期望数据规模*2 其他配置保留
+            RBloomFilter<Long> newBloomFilter = redissonClient.getBloomFilter(ALBUM_BLOOM_FILTER + ":new");
+            newBloomFilter.tryInit(expectedInsertions, falseProbability);
+
+            //4.2 查询DB过审专辑ID列表，将专辑ID存入新布隆过滤器
+            List<AlbumInfo> list = this.list(
+                    new LambdaQueryWrapper<AlbumInfo>()
+                            .eq(AlbumInfo::getStatus, SystemConstant.ALBUM_STATUS_PASS)
+                            .select(AlbumInfo::getId)
+            );
+            if (CollUtil.isNotEmpty(list)) {
+                for (AlbumInfo albumInfo : list) {
+                    newBloomFilter.add(albumInfo.getId());
+                }
+                //3.3 重命名改为原来布隆过滤器名称
+                newBloomFilter.rename(ALBUM_BLOOM_FILTER);
+            }
+        }
     }
 }

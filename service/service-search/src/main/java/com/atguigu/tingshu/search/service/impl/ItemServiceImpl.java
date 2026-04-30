@@ -2,6 +2,8 @@ package com.atguigu.tingshu.search.service.impl;
 
 import cn.hutool.core.lang.Assert;
 import com.atguigu.tingshu.album.AlbumFeignClient;
+import com.atguigu.tingshu.common.constant.RedisConstant;
+import com.atguigu.tingshu.common.execption.GuiguException;
 import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.BaseCategoryView;
 import com.atguigu.tingshu.model.search.AlbumInfoIndex;
@@ -11,6 +13,8 @@ import com.atguigu.tingshu.vo.album.AlbumStatVo;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RBloomFilter;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -46,6 +50,9 @@ public class ItemServiceImpl implements ItemService {
     private Executor threadPoolTaskExecutor;
 
 
+    @Autowired
+    private RedissonClient redissonClient;
+
     /**
      * 专辑详情页数据汇总
      *
@@ -54,6 +61,13 @@ public class ItemServiceImpl implements ItemService {
      */
     @Override
     public Map<String, Object> getItem(Long albumId) {
+        //0.判断布隆过滤器是否包含专辑ID ，结果true:因为存在误判，只能说明可能存在
+        RBloomFilter<Long> bloomFilter = redissonClient.getBloomFilter(RedisConstant.ALBUM_BLOOM_FILTER);
+        boolean contains = bloomFilter.contains(albumId);
+        if(!contains){
+            log.error("布隆过滤器判断专辑{}不存在", albumId);
+            throw new GuiguException(500, "专辑不存在！");
+        }
         //1.创建Map封装四项数据 如果是多线程并发写Map HashMap是线程不安全  故采用线程安全ConcurrentHashMap
         Map<String, Object> map = new ConcurrentHashMap<>();
 

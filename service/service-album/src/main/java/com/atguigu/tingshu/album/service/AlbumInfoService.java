@@ -75,4 +75,8 @@ public interface AlbumInfoService extends IService<AlbumInfo> {
     AlbumStatVo getAlbumStatVo(Long albumId);
 
 
+    /**
+     * 在项目维护期间，重建/扩容布隆过滤器
+     */
+    void rebuildBloomFilter();
 }
