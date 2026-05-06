@@ -1,11 +1,13 @@
 package com.atguigu.tingshu.account.service.impl;
 
+import cn.hutool.core.lang.Assert;
 import com.atguigu.tingshu.account.mapper.UserAccountDetailMapper;
 import com.atguigu.tingshu.account.mapper.UserAccountMapper;
 import com.atguigu.tingshu.account.service.UserAccountService;
 import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.model.account.UserAccount;
 import com.atguigu.tingshu.model.account.UserAccountDetail;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,5 +70,21 @@ public class UserAccountServiceImpl extends ServiceImpl<UserAccountMapper, UserA
 		userAccountDetail.setAmount(amount);
 		userAccountDetail.setOrderNo(orderNo);
 		userAccountDetailMapper.insert(userAccountDetail);
+	}
+
+	/**
+	 * 查询指定用户可用账户余额
+	 * @param userId
+	 * @return
+	 */
+	@Override
+	public BigDecimal getAvailableAmount(Long userId) {
+		UserAccount userAccount = userAccountMapper.selectOne(
+				new LambdaQueryWrapper<UserAccount>()
+						.eq(UserAccount::getUserId, userId)
+						.select(UserAccount::getAvailableAmount)
+		);
+		Assert.notNull(userAccount, "账户记录不存在请联系管理员");
+		return userAccount.getAvailableAmount();
 	}
 }

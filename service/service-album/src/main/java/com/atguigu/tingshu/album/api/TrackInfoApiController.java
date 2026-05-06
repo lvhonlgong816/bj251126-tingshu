@@ -20,6 +20,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @Tag(name = "声音管理")
@@ -170,5 +171,43 @@ public class TrackInfoApiController {
         TrackStatVo vo = trackInfoService.getTrackStatVo(trackId);
         return Result.ok(vo);
     }
+
+
+    /**
+     * 以选择购买声音作为起始，基于未购买声音数量，返回分集购买列表
+     * @param trackId 选择购买声音ID
+     * @return [{name:"本集",price:0.1,trackCount:1},{name:"后10集",price:1,trackCount:10}..]
+     */
+    @GuiGuLogin
+    @Operation(summary = "以选择购买声音作为起始，基于未购买声音数量，返回分集购买列表")
+    @GetMapping("/trackInfo/findUserTrackPaidList/{trackId}")
+    public Result<List<Map<String, Object>>> findFenJiPaidList(@PathVariable Long trackId){
+        //1.获取当前用户ID
+        Long userId = AuthContextHolder.getUserId();
+        //2.调用业务层
+        List<Map<String, Object>> list = trackInfoService.findFenJiPaidList(userId, trackId);
+        //3.返回结果
+        return Result.ok(list);
+    }
+
+
+    /**
+     * 以用户选择声音作为起始，查询当前用户未购买声音列表，展示订单确认页
+     * @param trackId
+     * @param trackCount
+     * @return
+     */
+    @GuiGuLogin
+    @Operation(summary = "以用户选择声音作为起始，查询当前用户未购买声音列表，展示订单确认页")
+    @GetMapping("/trackInfo/findPaidTrackInfoList/{trackId}/{trackCount}")
+    public Result<List<TrackInfo>> findPaidTrackInfoList(@PathVariable Long trackId, @PathVariable Integer trackCount){
+        //1.获取当前用户ID
+        Long userId = AuthContextHolder.getUserId();
+        //2.调用业务层
+        List<TrackInfo> list = trackInfoService.findPaidTrackInfoList(userId, trackId, trackCount);
+        //3.返回结果
+        return Result.ok(list);
+    }
+
 }
 

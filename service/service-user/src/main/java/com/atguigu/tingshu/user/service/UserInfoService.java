@@ -39,4 +39,18 @@ public interface UserInfoService extends IService<UserInfo> {
      * @return {声音ID：购买状态}
      */
     Map<Long, Integer> userIsPaidTrack(Long userId, Long albumId, List<Long> needCheckPayStateTrackIdList);
+
+    /**
+     * 判断指定用户是否购买指定专辑
+     * @param albumId
+     * @return 购买状态：true:已购买专辑、 false:未购买专辑
+     */
+    Boolean isPaidAlbum(Long userId, Long albumId);
+
+    /**
+     * 根据专辑id+用户ID获取用户已购买声音id列表
+     * @param albumId
+     * @return
+     */
+    List<Long> findUserPaidTrackIdList(Long userId, Long albumId);
 }

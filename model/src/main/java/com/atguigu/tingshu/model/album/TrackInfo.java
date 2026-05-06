@@ -3,6 +3,7 @@ package com.atguigu.tingshu.model.album;
 import com.atguigu.tingshu.model.base.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 @Data
 @Schema(description = "TrackInfo")
 @TableName("track_info")
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class TrackInfo extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
@@ -74,7 +76,7 @@ public class TrackInfo extends BaseEntity {
 	@Schema(description = "是否公开：0-否 1-是")
 	@TableField("is_open")
 	private String isOpen;
-	
+
 	@Schema(description = "发起审核任务ID")
 	@TableField("review_task_id")
 	private String reviewTaskId;

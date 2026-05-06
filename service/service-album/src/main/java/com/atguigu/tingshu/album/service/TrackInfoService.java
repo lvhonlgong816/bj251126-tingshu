@@ -6,6 +6,9 @@ import com.atguigu.tingshu.vo.album.*;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.List;
+import java.util.Map;
+
 public interface TrackInfoService extends IService<TrackInfo> {
 
     /**
@@ -67,4 +70,21 @@ public interface TrackInfoService extends IService<TrackInfo> {
      * @return
      */
     TrackStatVo getTrackStatVo(Long trackId);
+
+    /**
+     * 以选择购买声音作为起始，基于未购买声音数量，返回分集购买列表
+     * @param trackId 选择购买声音ID
+     * @return [{name:"本集",price:0.1,trackCount:1},{name:"后10集",price:1,trackCount:10}..]
+     */
+    List<Map<String, Object>> findFenJiPaidList(Long userId, Long trackId);
+
+    /**
+     * 以用户选择声音作为起始，查询当前用户未购买声音列表，展示订单确认页
+     *
+     * @param userId
+     * @param trackId
+     * @param trackCount
+     * @return
+     */
+    List<TrackInfo> findPaidTrackInfoList(Long userId, Long trackId, Integer trackCount);
 }

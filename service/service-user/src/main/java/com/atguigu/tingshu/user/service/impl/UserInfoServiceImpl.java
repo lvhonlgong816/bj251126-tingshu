@@ -198,4 +198,43 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
         }
         return map;
     }
+
+    /**
+     * 判断指定用户是否购买指定专辑
+     *
+     * @param albumId
+     * @return 购买状态：true:已购买专辑、 false:未购买专辑
+     */
+    @Override
+    public Boolean isPaidAlbum(Long userId, Long albumId) {
+        Long count = userPaidAlbumMapper.selectCount(
+                new LambdaQueryWrapper<UserPaidAlbum>()
+                        .eq(UserPaidAlbum::getAlbumId, albumId)
+                        .eq(UserPaidAlbum::getUserId, userId)
+        );
+        return count > 0;
+    }
+
+    /**
+     * 根据专辑id+用户ID获取用户已购买声音id列表
+     *
+     * @param albumId
+     * @return
+     */
+    @Override
+    public List<Long> findUserPaidTrackIdList(Long userId, Long albumId) {
+        List<UserPaidTrack> userPaidTrackList = userPaidTrackMapper.selectList(
+                new LambdaQueryWrapper<UserPaidTrack>()
+                        .eq(UserPaidTrack::getAlbumId, albumId)
+                        .eq(UserPaidTrack::getUserId, userId)
+                        .select(UserPaidTrack::getTrackId)
+        );
+        if (CollUtil.isNotEmpty(userPaidTrackList)) {
+            List<Long> paidTrackIdList = userPaidTrackList.stream()
+                    .map(UserPaidTrack::getTrackId)
+                    .collect(Collectors.toList());
+            return paidTrackIdList;
+        }
+        return List.of();
+    }
 }

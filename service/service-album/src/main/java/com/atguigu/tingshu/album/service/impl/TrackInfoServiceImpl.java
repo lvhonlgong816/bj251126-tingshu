@@ -1,6 +1,7 @@
 package com.atguigu.tingshu.album.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import com.atguigu.tingshu.album.mapper.AlbumInfoMapper;
 import com.atguigu.tingshu.album.mapper.AlbumStatMapper;
@@ -12,7 +13,6 @@ import com.atguigu.tingshu.album.service.TrackInfoService;
 import com.atguigu.tingshu.album.service.VodService;
 import com.atguigu.tingshu.common.cache.GuiGuCache;
 import com.atguigu.tingshu.common.constant.SystemConstant;
-import com.atguigu.tingshu.common.rabbit.constant.MqConst;
 import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.AlbumStat;
 import com.atguigu.tingshu.model.album.TrackInfo;
@@ -32,10 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.atguigu.tingshu.common.constant.SystemConstant.*;
@@ -270,7 +267,7 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
                         .stream().filter(track -> track.getOrderNum() > tracksForFree)
                         .forEach(track -> track.setIsShowPaidMark(true));
             }
-        }else {
+        } else {
             //4 TODO 处理已登录情况 结合专辑付费类型、用户身份、用户购买情况
             //4.1 远程调用 用户服务 获取当前用户身份 确定是普通用户还是VIP用户
             Boolean isVIP = false;
@@ -288,11 +285,11 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
             }
 
             //4.3 情形3：所有用户（普通+VIP会员用户） 查看 付费类型是 付费   默认无权益  同样需要进一步查看购买情况
-            if(ALBUM_PAY_TYPE_REQUIRE.equals(payType)){
+            if (ALBUM_PAY_TYPE_REQUIRE.equals(payType)) {
                 isNeedCheckPayState = true;
             }
             //4.4 如果满足需要查看购买情况条件，远程调用 用户服务 查询当前页 除试听以外 每个声音购买状态
-            if(isNeedCheckPayState){
+            if (isNeedCheckPayState) {
                 //4.4.1 获取当前页中需要验证购买状态声音ID列表（除去试听声音ID）
                 List<Long> needCheckPayStateTrackIdList = pageInfo
                         .getRecords()
@@ -307,7 +304,7 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
                         .stream()
                         .filter(track -> track.getOrderNum() > tracksForFree)
                         // 从购买状态Map获取结果如果为0 说明 未购买  将付费标识改为true
-                        .forEach(track -> track.setIsShowPaidMark(payStateMap.get(track.getTrackId())==0));
+                        .forEach(track -> track.setIsShowPaidMark(payStateMap.get(track.getTrackId()) == 0));
             }
         }
         return pageInfo;
@@ -318,6 +315,7 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 
     /**
      * 更新声音以及所属专辑统计设置
+     *
      * @param mqVo
      */
     @Override
@@ -329,31 +327,32 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
                 new LambdaUpdateWrapper<TrackStat>()
                         .eq(TrackStat::getTrackId, mqVo.getTrackId())
                         .eq(TrackStat::getStatType, mqVo.getStatType())
-                        .setSql("stat_num = stat_num +"+mqVo.getCount())
+                        .setSql("stat_num = stat_num +" + mqVo.getCount())
         );
         //2.如果是播放或评论统计类型 同时 更新所属专辑统计数值
-        if(TRACK_STAT_PLAY.equals(mqVo.getStatType())){
+        if (TRACK_STAT_PLAY.equals(mqVo.getStatType())) {
             albumStatMapper.update(
                     null,
                     new LambdaUpdateWrapper<AlbumStat>()
                             .eq(AlbumStat::getAlbumId, mqVo.getAlbumId())
                             .eq(AlbumStat::getStatType, ALBUM_STAT_PLAY)
-                            .setSql("stat_num = stat_num +"+mqVo.getCount())
+                            .setSql("stat_num = stat_num +" + mqVo.getCount())
             );
         }
-        if(TRACK_STAT_COMMENT.equals(mqVo.getStatType())){
+        if (TRACK_STAT_COMMENT.equals(mqVo.getStatType())) {
             albumStatMapper.update(
                     null,
                     new LambdaUpdateWrapper<AlbumStat>()
                             .eq(AlbumStat::getAlbumId, mqVo.getAlbumId())
                             .eq(AlbumStat::getStatType, ALBUM_STAT_COMMENT)
-                            .setSql("stat_num = stat_num +"+mqVo.getCount())
+                            .setSql("stat_num = stat_num +" + mqVo.getCount())
             );
         }
     }
 
     /**
      * 获取声音统计数值
+     *
      * @param trackId
      * @return
      */
@@ -363,5 +362,88 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
         return trackInfoMapper.getTrackStatVo(trackId);
     }
 
+    /**
+     * 以选择购买声音作为起始，基于未购买声音数量，返回分集购买列表
+     *
+     * @param trackId 选择购买声音ID
+     * @return [{name:"本集",price:0.1,trackCount:1},{name:"后10集",price:1,trackCount:10}..]
+     */
+    @Override
+    public List<Map<String, Object>> findFenJiPaidList(Long userId, Long trackId) {
+        //1.根据声音ID查询选择 "欲购"的声音信息 得到所属专辑ID，序号
+        TrackInfo trackInfo = trackInfoMapper.selectById(trackId);
+        Long albumId = trackInfo.getAlbumId();
+        Integer orderNum = trackInfo.getOrderNum();
+        //2.查询"待购买"声音列表（可能包含已购买声音）
+        List<TrackInfo> waitBuyTrackList = trackInfoMapper.selectList(
+                new LambdaQueryWrapper<TrackInfo>()
+                        .eq(TrackInfo::getAlbumId, albumId)
+                        .ge(TrackInfo::getOrderNum, orderNum)
+                        .select(TrackInfo::getId)
+        );
 
+        //3.远程调用"用户服务"获取该专辑下已购买声音ID列表
+        List<Long> paidTrackIdList = userFeignClient.findUserPaidTrackIdList(albumId).getData();
+
+        //4.将已购买声音去掉，得到最终代购买声音数量
+        if (CollUtil.isNotEmpty(paidTrackIdList)) {
+            waitBuyTrackList = waitBuyTrackList.stream()
+                    .filter(t -> !paidTrackIdList.contains(t.getId()))
+                    .collect(Collectors.toList());
+        }
+
+        //5.基于未购买声音数量，构建分集购买对象集合
+        //5.0 查询所属专辑得到声音单价
+        AlbumInfo albumInfo = albumInfoMapper.selectById(albumId);
+        BigDecimal price = albumInfo.getPrice();
+        //未购买声音数量
+        int size = waitBuyTrackList.size();
+        ArrayList<Map<String, Object>> mapList = new ArrayList<>();
+        //5.1 构建"本集"分集购买对象
+        mapList.add(Map.of("name", "本集", "trackCount", 1, "price", price));
+        //5.2 构建"后N集"分集购买对象，最多显示5个
+        for (int i = 10; i <= 50; i += 10) {
+            if (i < size) {
+                mapList.add(Map.of("name", "后" + i + "集", "trackCount", i, "price", price.multiply(BigDecimal.valueOf(i))));
+            } else {
+                mapList.add(Map.of("name", "后" + size + "集(全集)", "trackCount", size, "price", price.multiply(BigDecimal.valueOf(size))));
+                break;
+            }
+        }
+        return mapList;
+    }
+
+    /**
+     * 以用户选择声音作为起始，查询当前用户未购买声音列表，展示订单确认页
+     *
+     * @param userId
+     * @param trackId
+     * @param trackCount
+     * @return
+     */
+    @Override
+    public List<TrackInfo> findPaidTrackInfoList(Long userId, Long trackId, Integer trackCount) {
+        //1.根据声音ID查询欲购声音信息 得到专辑ID跟序号
+        TrackInfo trackInfo = trackInfoMapper.selectById(trackId);
+        Long albumId = trackInfo.getAlbumId();
+        Integer orderNum = trackInfo.getOrderNum();
+
+        //2.构建查询对象
+        LambdaQueryWrapper<TrackInfo> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TrackInfo::getAlbumId, albumId);
+        queryWrapper.ge(TrackInfo::getOrderNum, orderNum);
+        //2.1.远程调用"用户服务"获取已购声音ID列表
+        List<Long> paidTrackIdList = userFeignClient.findUserPaidTrackIdList(albumId).getData();
+        if(CollUtil.isNotEmpty(paidTrackIdList)){
+            queryWrapper.notIn(TrackInfo::getId, paidTrackIdList);
+        }
+        //2.2 增加排序，限制返回数量,限制查询字段
+        queryWrapper.orderByAsc(TrackInfo::getOrderNum);
+        queryWrapper.last("limit "+trackCount);
+        queryWrapper.select(TrackInfo::getId,TrackInfo::getAlbumId, TrackInfo::getCoverUrl, TrackInfo::getTrackIntro, TrackInfo::getTrackTitle);
+
+        //3.查询未购买声音列表
+        List<TrackInfo> waitBuyTrackInfoList = trackInfoMapper.selectList(queryWrapper);
+        return waitBuyTrackInfoList;
+    }
 }
