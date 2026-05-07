@@ -51,4 +51,10 @@ public class AlbumDegradeFeignClient implements AlbumFeignClient {
         log.error("[专辑服务]提供远程调用接口findPaidTrackInfoList执行了服务降级");
         return null;
     }
+
+    @Override
+    public Result<TrackInfo> getTrackInfo(Long id) {
+        log.error("[专辑服务]提供远程调用接口getTrackInfo执行了服务降级");
+        return null;
+    }
 }

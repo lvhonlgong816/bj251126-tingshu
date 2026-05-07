@@ -4,29 +4,35 @@ import cn.binarywang.wx.miniapp.api.WxMaService;
 import cn.binarywang.wx.miniapp.bean.WxMaJscode2SessionResult;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.date.DateTime;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.IdUtil;
+import com.atguigu.tingshu.album.AlbumFeignClient;
 import com.atguigu.tingshu.common.cache.GuiGuCache;
 import com.atguigu.tingshu.common.constant.RedisConstant;
+import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
 import com.atguigu.tingshu.common.rabbit.service.RabbitService;
-import com.atguigu.tingshu.model.user.UserInfo;
-import com.atguigu.tingshu.model.user.UserPaidAlbum;
-import com.atguigu.tingshu.model.user.UserPaidTrack;
-import com.atguigu.tingshu.user.mapper.UserInfoMapper;
-import com.atguigu.tingshu.user.mapper.UserPaidAlbumMapper;
-import com.atguigu.tingshu.user.mapper.UserPaidTrackMapper;
+import com.atguigu.tingshu.model.album.TrackInfo;
+import com.atguigu.tingshu.model.user.*;
+import com.atguigu.tingshu.user.mapper.*;
+import com.atguigu.tingshu.user.pattern.DeliveryStrategy;
+import com.atguigu.tingshu.user.pattern.factory.DeliveryStrategyFactory;
 import com.atguigu.tingshu.user.service.UserInfoService;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
+import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.error.WxErrorException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +55,9 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 
     @Autowired
     private RabbitService rabbitService;
+
+    @Autowired
+    private AlbumFeignClient albumFeignClient;
 
     /**
      * 微信小程序一键登录
@@ -237,4 +246,113 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
         }
         return List.of();
     }
+
+    @Autowired
+    private UserVipServiceMapper userVipServiceMapper;
+
+    @Autowired
+    private DeliveryStrategyFactory factory;
+
+    /**
+     * 支付成功后权益方法（虚拟物品发货）
+     *
+     * @param userPaidRecordVo
+     * @return
+     */
+    @Override
+    public void savePaidRecord(UserPaidRecordVo userPaidRecordVo) {
+        //项目类型: 1001-专辑 1002-声音 1003-vip会员
+        String itemType = userPaidRecordVo.getItemType();
+        DeliveryStrategy deliveryStrategy = factory.getDeliveryStrategy(itemType);
+        deliveryStrategy.delivery(userPaidRecordVo);
+
+
+        //if (SystemConstant.ORDER_ITEM_TYPE_ALBUM.equals(itemType)) {
+        //    //1.处理购买类型是专辑
+        //    //1.1 根据订单编号查询专辑购买记录，验证这比订单是否重复处理
+        //    Long count = userPaidAlbumMapper.selectCount(
+        //            new LambdaQueryWrapper<UserPaidAlbum>()
+        //                    .eq(UserPaidAlbum::getOrderNo, userPaidRecordVo.getOrderNo())
+        //    );
+        //    if (count == 0) {
+        //        //1.2 新增已购专辑记录（等同于发放权益）
+        //        UserPaidAlbum userPaidAlbum = new UserPaidAlbum();
+        //        userPaidAlbum.setUserId(userPaidRecordVo.getUserId());
+        //        userPaidAlbum.setOrderNo(userPaidRecordVo.getOrderNo());
+        //        userPaidAlbum.setAlbumId(userPaidRecordVo.getItemIdList().get(0));
+        //        userPaidAlbumMapper.insert(userPaidAlbum);
+        //    }
+        //} else if (SystemConstant.ORDER_ITEM_TYPE_TRACK.equals(itemType)) {
+        //    //2.处理购买类型是声音
+        //    //2.1 根据订单编号查询声音购买记录，验证这比订单是否重复处理
+        //    Long count = userPaidTrackMapper.selectCount(
+        //            new LambdaQueryWrapper<UserPaidTrack>()
+        //                    .eq(UserPaidTrack::getOrderNo, userPaidRecordVo.getOrderNo())
+        //    );
+        //    if (count == 0) {
+        //        //2.1 新增声音购买记录 可能存在多条声音购买记录
+        //        List<Long> itemIdList = userPaidRecordVo.getItemIdList();
+        //        //2.2 远程调用"专辑服务获取声音信息" 得到专辑ID
+        //        TrackInfo trackInfo = albumFeignClient.getTrackInfo(itemIdList.get(0)).getData();
+        //        Long albumId = trackInfo.getAlbumId();
+        //        //2.2 新增声音购买记录（等同于发放权益）
+        //        for (Long itemId : itemIdList) {
+        //            UserPaidTrack userPaidTrack = new UserPaidTrack();
+        //            userPaidTrack.setOrderNo(userPaidRecordVo.getOrderNo());
+        //            userPaidTrack.setUserId(userPaidRecordVo.getUserId());
+        //            userPaidTrack.setAlbumId(albumId);
+        //            userPaidTrack.setTrackId(itemId);
+        //            userPaidTrackMapper.insert(userPaidTrack);
+        //        }
+        //    }
+        //} else if (SystemConstant.ORDER_ITEM_TYPE_VIP.equals(itemType)) {
+        //    //3.处理购买类型是VIP会员
+        //    //3.1 根据订单编号查询会员购买记录，验证这比订单是否重复处理
+        //    Long count = userVipServiceMapper.selectCount(
+        //            new LambdaQueryWrapper<UserVipService>()
+        //                    .eq(UserVipService::getOrderNo, userPaidRecordVo.getOrderNo())
+        //    );
+        //    if (count == 0) {
+        //        //3.2 获取当前用户身份，是否为VIP会员
+        //        Boolean isVIP = false;
+        //        UserInfoVo userInfoVo = this.getUserInfo(userPaidRecordVo.getUserId());
+        //        if (userInfoVo.getIsVip().intValue() == 1 && userInfoVo.getVipExpireTime().after(new Date())) {
+        //            isVIP = true;
+        //        }
+        //        //3.3 封装会员购买记录，计算本次会员生效时间，失效时间
+        //        UserVipService userVipService = new UserVipService();
+        //        userVipService.setOrderNo(userPaidRecordVo.getOrderNo());
+        //        userVipService.setUserId(userPaidRecordVo.getUserId());
+        //        //3.3.2 根据用户选择套餐ID查询套餐信息
+        //        VipServiceConfig vipServiceConfig = vipServiceConfigMapper.selectById(userPaidRecordVo.getItemIdList().get(0));
+        //        Integer serviceMonth = vipServiceConfig.getServiceMonth();
+        //        //3.3.1 本次会员起始时间 如果用户是普通用户=当前时间 如果是VIP获取当前用户会员失效时间+1天
+        //        //      本次会员过期时间 如果用户是普通用户=当前时间+服务月数 如果是VIP=现有会员过期时间+服务月数
+        //        if (!isVIP) {
+        //            userVipService.setStartTime(new Date());
+        //            userVipService.setExpireTime(DateUtil.offsetMonth(new Date(), serviceMonth));
+        //        } else {
+        //            DateTime startTime = DateUtil.offsetDay(userInfoVo.getVipExpireTime(), 1);
+        //            userVipService.setStartTime(startTime);
+        //            userVipService.setExpireTime(DateUtil.offsetMonth(startTime, serviceMonth));
+        //        }
+        //        //userVipService.setIsAutoRenew();
+        //        //userVipService.setNextRenewTime();
+        //
+        //        //3.4 新增会员购买记录
+        //        userVipServiceMapper.insert(userVipService);
+        //
+        //
+        //        //3.5 更新用户信息表会员标识以及过期时间
+        //        UserInfo userInfo = new UserInfo();
+        //        userInfo.setId(userPaidRecordVo.getUserId());
+        //        userInfo.setIsVip(1);
+        //        userInfo.setVipExpireTime(userVipService.getExpireTime());
+        //        userInfoMapper.updateById(userInfo);
+        //    }
+        //}
+    }
+
+    @Autowired
+    private VipServiceConfigMapper vipServiceConfigMapper;
 }

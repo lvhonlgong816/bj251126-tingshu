@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @Tag(name = "订单管理")
 @RestController
 @RequestMapping("api/order")
@@ -39,6 +41,24 @@ public class OrderInfoApiController {
 		OrderInfoVo orderInfoVo  = orderInfoService.trade(userId, tradeVo);
 		//3.响应订单VO
 		return Result.ok(orderInfoVo);
+	}
+
+
+	/**
+	 * 提交/结算订单（处理余额支付逻辑）
+	 * @param orderInfoVo 订单vo信息
+	 * @return {"orderNo":"本次订单保存后订单编号"} 用于后续对接微信支付或者展示订单详情
+	 */
+	@GuiGuLogin
+	@Operation(summary = "提交/结算订单（处理余额支付逻辑）")
+	@PostMapping("/orderInfo/submitOrder")
+	public Result<Map<String, String>> submitOrder(@RequestBody OrderInfoVo orderInfoVo){
+		//1.获取当前用户ID
+		Long userId = AuthContextHolder.getUserId();
+		//2.调用业务逻辑
+		Map<String, String> map  = orderInfoService.submitOrder(userId, orderInfoVo);
+		//3.响应订单编号
+		return Result.ok(map);
 	}
 }
 

@@ -12,5 +12,10 @@
 		id,user_id,total_amount,lock_amount,available_amount,total_income_amount,total_pay_amount,create_time,update_time,is_deleted
 	</sql>
 
+    <select id="checkAndDeduct" resultType="com.atguigu.tingshu.model.account.UserAccount">
+		SELECT * from user_account where user_id = #{userId}
+									 and available_amount >= #{amount} and is_deleted = 0 for update
+	</select>
+
 </mapper>
 

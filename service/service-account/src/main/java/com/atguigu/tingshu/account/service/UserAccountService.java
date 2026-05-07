@@ -1,6 +1,7 @@
 package com.atguigu.tingshu.account.service;
 
 import com.atguigu.tingshu.model.account.UserAccount;
+import com.atguigu.tingshu.vo.account.AccountDeductVo;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.math.BigDecimal;
@@ -31,4 +32,12 @@ public interface UserAccountService extends IService<UserAccount> {
      * @return
      */
     BigDecimal getAvailableAmount(Long userId);
+
+    /**
+     * 支付方式选择余额支付，执行扣减逻辑
+     *
+     * @param accountDeductVo 扣减信息vo
+     * @return
+     */
+    void checkAndDeduct(AccountDeductVo accountDeductVo);
 }

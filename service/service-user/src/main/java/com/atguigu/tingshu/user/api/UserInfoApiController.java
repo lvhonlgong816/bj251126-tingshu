@@ -5,6 +5,7 @@ import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.user.service.UserInfoService;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
+import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,6 +90,19 @@ public class UserInfoApiController {
         List<Long> list = userInfoService.findUserPaidTrackIdList(userId, albumId);
         //3.响应结果
         return Result.ok(list);
+    }
+
+    /**
+     * 由于后续微信支付成功后，同样需要进行权益发放，微信异步回调没有token令牌 故不要加@GuiGuLogin注解
+     * 支付成功后权益方法（虚拟物品发货）
+     * @param userPaidRecordVo
+     * @return
+     */
+    @Operation(summary = "支付成功后权益方法（虚拟物品发货）")
+    @PostMapping("/userInfo/savePaidRecord")
+    public Result savePaidRecord(@RequestBody UserPaidRecordVo userPaidRecordVo){
+        userInfoService.savePaidRecord(userPaidRecordVo);
+        return Result.ok();
     }
 }
 

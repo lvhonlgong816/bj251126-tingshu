@@ -75,4 +75,12 @@ public interface AlbumFeignClient {
      */
     @GetMapping("/trackInfo/findPaidTrackInfoList/{trackId}/{trackCount}")
     public Result<List<TrackInfo>> findPaidTrackInfoList(@PathVariable Long trackId, @PathVariable Integer trackCount);
+
+    /**
+     * 根据声音ID查询声音信息
+     * @param id
+     * @return
+     */
+    @GetMapping("/trackInfo/getTrackInfo/{id}")
+    public Result<TrackInfo> getTrackInfo(@PathVariable Long id);
 }

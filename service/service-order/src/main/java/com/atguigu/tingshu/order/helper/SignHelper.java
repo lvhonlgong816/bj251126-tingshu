@@ -30,10 +30,11 @@ public class SignHelper {
             throw new GuiguException(ResultCodeEnum.SIGN_OVERDUE);
         }
 
-        //校验签名
+        //校验签名 提交的签名
         String signRemote = (String)parameterMap.get("sign");
-
+        //再次根据订单信息生成新的签名
         String signLocal = getSign(parameterMap);
+
         if(StringUtils.isEmpty(signRemote)){
             throw new GuiguException(ResultCodeEnum.SIGN_ERROR);
         }
