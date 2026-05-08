@@ -10,6 +10,7 @@ import com.atguigu.tingshu.album.AlbumFeignClient;
 import com.atguigu.tingshu.common.constant.RedisConstant;
 import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.common.execption.GuiguException;
+import com.atguigu.tingshu.common.handler.GlobalExceptionHandler;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.TrackInfo;
@@ -30,7 +31,10 @@ import com.atguigu.tingshu.vo.order.OrderInfoVo;
 import com.atguigu.tingshu.vo.order.TradeVo;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import io.seata.spring.annotation.GlobalTransactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -67,6 +71,8 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
 
     @Autowired
     private OrderDerateService orderDerateService;
+    @Autowired
+    private GlobalExceptionHandler globalExceptionHandler;
 
 
     /**
@@ -240,6 +246,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
      * @return {"orderNo":"本次订单保存后订单编号"} 用于后续对接微信支付或者展示订单详情
      */
     @Override
+    @GlobalTransactional(rollbackFor = Exception.class)
     public Map<String, String> submitOrder(Long userId, OrderInfoVo orderInfoVo) {
         //1.业务校验，验证流水号防止订单重提交 采用lua脚本保证判断跟删除原子性
         //1.1 定义key
@@ -305,6 +312,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
                 //4.3.2 执行远程调用
                 Result savePaidRecordResult = userFeignClient.savePaidRecord(userPaidRecordVo);
                 //4.3.3 判断业务状态码是否为200
+                //int i = 1/-0;
                 if (savePaidRecordResult.getCode().intValue() != 200) {
                     throw new GuiguException(savePaidRecordResult.getCode(), savePaidRecordResult.getMessage());
                 }
@@ -369,6 +377,47 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
             orderDerateService.saveBatch(orderDerateList);
         }
         return orderInfo;
+    }
+
+    /**
+     * 根据订单编号查询订单详情（包含订单明细列表，减免列表）
+     *
+     * @param orderNo
+     * @return
+     */
+    @Override
+    public OrderInfo getOrderInfo(String orderNo) {
+        //1.根据订单编号查询订单信息
+        OrderInfo orderInfo = orderInfoMapper.selectOne(
+                new LambdaQueryWrapper<OrderInfo>()
+                        .eq(OrderInfo::getOrderNo, orderNo)
+        );
+        Long orderId = orderInfo.getId();
+        //2.根据订单ID查询订单明细
+        List<OrderDetail> orderDetailList = orderDetailService.list(
+                new LambdaQueryWrapper<OrderDetail>()
+                        .eq(OrderDetail::getOrderId, orderId)
+        );
+        orderInfo.setOrderDetailList(orderDetailList);
+        //3.根据订单ID查询订单减免
+        List<OrderDerate> orderDerateList = orderDerateService.list(
+                new LambdaQueryWrapper<OrderDerate>()
+                        .eq(OrderDerate::getOrderId, orderId)
+        );
+        orderInfo.setOrderDerateList(orderDerateList);
+        return orderInfo;
+    }
+
+    /**
+     * 分页查询订单(包含订单明细、减免列表)
+     * @param pageInfo
+     * @param userId
+     * @return
+     */
+    @Override
+    public Page<OrderInfo> findUserPage(Page<OrderInfo> pageInfo, Long userId) {
+        //TODO 作业：获取本页订单，获取订单ID列表， 根据订单ID列表查询订单明细集合 转为 Map<订单ID, List<订单明细>> 组装订单中明细属性
+        return orderInfoMapper.findUserPage(pageInfo, userId);
     }
 
 

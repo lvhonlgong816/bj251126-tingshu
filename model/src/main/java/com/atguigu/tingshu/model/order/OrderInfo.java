@@ -61,9 +61,27 @@ public class OrderInfo extends BaseEntity {
 	@TableField(exist = false)
 	private List<OrderDerate> orderDerateList;
 
-	@TableField(exist = false)
-	private String orderStatusName;
-	@TableField(exist = false)
-	private String payWayName;
 
+	//所有的转JSON框架都是找属性的get方法得到属性名称key 方法返回值就是value
+	public String getOrderStatusName() {
+		if("0901".equals(orderStatus)){
+			return "未支付";
+		} else if ("0902".equals(orderStatus)) {
+			return "已支付";
+		} else if ("0903".equals(orderStatus)) {
+			return "已取消";
+		}
+		return null;
+	}
+
+	public String getPayWayName() {
+		if ("1101".equals(payWay)) {
+			return "微信";
+		} else if ("1102".equals(payWay)) {
+			return "支付宝";
+		} else if ("1103".equals(payWay)) {
+			return "余额";
+		}
+		return "";
+	}
 }
