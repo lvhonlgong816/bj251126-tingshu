@@ -48,4 +48,17 @@ public interface OrderInfoService extends IService<OrderInfo> {
      * @return
      */
     Page<OrderInfo> findUserPage(Page<OrderInfo> pageInfo, Long userId);
+
+    /**
+     * 取消订单延迟消息：判断订单支付状态，如未支付，将订单修改为已关闭
+     * @param orderId
+     */
+    void cancelOrder(Long orderId);
+
+    /**
+     * 用户支付成功后，修改订单状态，虚拟物品发货
+     * @param orderNo
+     * @return
+     */
+    void orderPaySuccess(String orderNo);
 }

@@ -11,6 +11,8 @@ import com.atguigu.tingshu.common.constant.RedisConstant;
 import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.common.execption.GuiguException;
 import com.atguigu.tingshu.common.handler.GlobalExceptionHandler;
+import com.atguigu.tingshu.common.rabbit.constant.MqConst;
+import com.atguigu.tingshu.common.rabbit.service.RabbitService;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.TrackInfo;
@@ -32,11 +34,14 @@ import com.atguigu.tingshu.vo.order.TradeVo;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import io.seata.spring.annotation.GlobalTransactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -48,9 +53,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.atguigu.tingshu.common.constant.SystemConstant.*;
+import static com.atguigu.tingshu.common.rabbit.constant.MqConst.*;
 
 @Slf4j
 @Service
+@RefreshScope
 @SuppressWarnings({"all"})
 public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo> implements OrderInfoService {
 
@@ -74,6 +81,14 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
     @Autowired
     private GlobalExceptionHandler globalExceptionHandler;
 
+    /**
+     * @Value读取配置文件内容 配合@RefreshScope注解实现热更新
+     */
+    @Value("${order.cancel}")
+    private Integer cancelOrderTTL;
+
+    @Autowired
+    private RabbitService rabbitService;
 
     /**
      * 订单结算（会员套餐、专辑、声音）
@@ -272,7 +287,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         //2.2 调用工具类验签
         SignHelper.checkSign(map);
 
-        //TODO 核心订单业务处理逻辑
+        // 核心订单业务处理逻辑
         //3.保存订单相关数据（包括：订单、订单明细、优惠列表） 此时保存订单状态：未支付
         OrderInfo orderInfo = this.saveOrderInfo(userId, orderInfoVo);
 
@@ -319,11 +334,14 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
             }
         }
 
-        //5.TODO 无论是哪种付款方式，采用延迟消息自动将超时未支付订单取消掉
+        //5.TODO 无论是哪种付款方式，采用延迟消息自动将超时未支付订单取消掉  自动关单时间阈值：15分钟
+        //方案一：采用RabbitMQ延迟消息  方案二:采用定时任务  方案三：不做处理 当进行查询判断订单是否过期
+        rabbitService.sendDelayMessage(EXCHANGE_CANCEL_ORDER, ROUTING_CANCEL_ORDER, orderInfo.getId(), cancelOrderTTL);
 
         //6.返回本次订单订单编号，用于后续支付成功后查询订单、或者基于订单编号对接微信支付
         return Map.of("orderNo", orderInfo.getOrderNo());
     }
+
 
     /**
      * 保存订单信息
@@ -410,6 +428,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
 
     /**
      * 分页查询订单(包含订单明细、减免列表)
+     *
      * @param pageInfo
      * @param userId
      * @return
@@ -420,5 +439,71 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         return orderInfoMapper.findUserPage(pageInfo, userId);
     }
 
+    /**
+     * 取消订单延迟消息：判断订单支付状态，如未支付，将订单修改为已关闭
+     *
+     * @param orderId
+     */
+    @Override
+    public void cancelOrder(Long orderId) {
+        //1.先查询订单
+        //OrderInfo orderInfo = orderInfoMapper.selectById(orderId);
+        //2.判断订单状态  存在问题：判断成立后，用户此刻完成付款 造成数据不一致
+        //if(SystemConstant.ORDER_STATUS_UNPAID.equals(orderInfo.getOrderStatus())){
+        //    orderInfo.setOrderStatus(ORDER_STATUS_CANCEL);
+        //    orderInfoMapper.updateById(orderInfo);
+        //}
+        //改良下 修改条件 where order_id = ? and order_status = 0901; 如果订单最后一刻变成0902 更新失败
+        int update = orderInfoMapper.update(
+                null,
+                new LambdaUpdateWrapper<OrderInfo>()
+                        .eq(OrderInfo::getId, orderId)
+                        .eq(OrderInfo::getOrderStatus, ORDER_STATUS_UNPAID)
+                        .set(OrderInfo::getOrderStatus, ORDER_STATUS_CANCEL)
+        );
+        if (update > 0) {
+            log.info("取消订单成功，{}", orderId);
+        }
+    }
 
+    /**
+     * 用户支付成功后，修改订单状态，虚拟物品发货
+     *
+     * @param orderNo
+     * @return
+     */
+    @Override
+    public void orderPaySuccess(String orderNo) {
+        //1.更新订单状态
+        int update = orderInfoMapper.update(
+                null,
+                new LambdaUpdateWrapper<OrderInfo>()
+                        .eq(OrderInfo::getOrderNo, orderNo)
+                        .eq(OrderInfo::getOrderStatus, ORDER_STATUS_UNPAID)
+                        .set(OrderInfo::getOrderStatus, ORDER_STATUS_PAID)
+        );
+        if (update > 0) {
+            //2.虚拟物品发货
+            //2.1 构建虚拟物品发货VO对象
+            OrderInfo orderInfo =
+                    orderInfoMapper.selectOne(new LambdaQueryWrapper<OrderInfo>().eq(OrderInfo::getOrderNo, orderNo));
+            UserPaidRecordVo vo = new UserPaidRecordVo();
+            vo.setOrderNo(orderNo);
+            vo.setUserId(orderInfo.getUserId());
+            vo.setItemType(orderInfo.getItemType());
+            List<OrderDetail> orderDetailList = orderDetailService.list(
+                    new LambdaQueryWrapper<OrderDetail>()
+                            .eq(OrderDetail::getOrderId, orderInfo.getId())
+            );
+            List<Long> itemIdList = orderDetailList.stream().map(OrderDetail::getItemId).collect(Collectors.toList());
+            vo.setItemIdList(itemIdList);
+
+            //2.2 远程调用"用户服务"虚拟物品发货
+            Result result = userFeignClient.savePaidRecord(vo);
+            //2.3 判断响应业务状态码
+            if (result.getCode().intValue() != 200) {
+                throw new GuiguException(result.getCode(), result.getMessage());
+            }
+        }
+    }
 }

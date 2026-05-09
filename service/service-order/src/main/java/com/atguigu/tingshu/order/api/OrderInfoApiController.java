@@ -96,5 +96,17 @@ public class OrderInfoApiController {
 		//4.返回分页对象
 		return Result.ok(pageInfo);
 	}
+
+	/**
+	 * 用户支付成功后，修改订单状态，虚拟物品发货
+	 * @param orderNo
+	 * @return
+	 */
+	@Operation(summary = "用户支付成功后，修改订单状态，虚拟物品发货")
+	@GetMapping("/orderInfo/orderPaySuccess/{orderNo}")
+	public Result orderPaySuccess(@PathVariable String orderNo){
+		orderInfoService.orderPaySuccess(orderNo);
+		return Result.ok();
+	}
 }
 
