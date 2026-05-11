@@ -5,6 +5,7 @@ import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -61,4 +62,10 @@ public interface UserInfoService extends IService<UserInfo> {
      * @return
      */
     void savePaidRecord(UserPaidRecordVo userPaidRecordVo);
+
+    /***
+     * 取消过期会员 会员标识
+     * @param now
+     */
+    void updateVipExpireStatus(Date now);
 }

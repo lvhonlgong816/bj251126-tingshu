@@ -11,6 +11,7 @@ import com.atguigu.tingshu.model.account.UserAccountDetail;
 import com.atguigu.tingshu.vo.account.AccountDeductVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -129,5 +130,16 @@ public class UserAccountServiceImpl extends ServiceImpl<UserAccountMapper, UserA
             }
         }
 
+    }
+
+    /**
+     *
+     * @param pageInfo 分页对象
+     * @param userId 用户ID
+     * @param tradeType 交易类型 1201充值 1204消费
+     */
+    @Override
+    public void findUserAccountDetailPage(Page pageInfo, Long userId, String tradeType) {
+        userAccountDetailMapper.findUserAccountDetail(pageInfo, userId, tradeType);
     }
 }

@@ -10,6 +10,19 @@
 	<sql id="columns">
 		id,user_id,title,trade_type,amount,order_no,create_time,update_time,is_deleted
 	</sql>
+	<select id="findUserAccountDetail" resultType="com.atguigu.tingshu.model.account.UserAccountDetail">
+		SELECT
+			id,
+			title,
+			amount,
+			create_time
+		from user_account_detail
+		where user_id = #{userId}
+		  and trade_type = #{tradeType}
+		  and is_deleted = 0
+		order by create_time DESC
+	</select>
+
 
 </mapper>
 

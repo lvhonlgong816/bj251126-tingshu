@@ -178,7 +178,7 @@ public class WxPayServiceImpl implements WxPayService {
                 Boolean flag = redisTemplate.opsForValue().setIfAbsent(key, transactionId, 25, TimeUnit.HOURS);
                 if (flag) {
                     try {
-                        //3.TODO 核心业务处理：本地交易记录、订单状态包含权益发放、充值状态包含余额充值
+                        //3. 核心业务处理：本地交易记录、订单状态包含权益发放、充值状态包含余额充值
                         paymentInfoService.updatePaymentInfo(transaction);
                     } catch (Exception e) {
                         redisTemplate.delete(key);

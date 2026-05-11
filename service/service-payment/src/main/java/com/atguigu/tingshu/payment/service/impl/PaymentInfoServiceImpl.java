@@ -137,9 +137,15 @@ public class PaymentInfoServiceImpl extends ServiceImpl<PaymentInfoMapper, Payme
                 }
             }
 
-            //3.TODO 处理支付类型是：充值 充值状态：已支付、余额充值业务
+            //3. 处理支付类型是：充值 充值状态：已支付、余额充值业务
             if (SystemConstant.PAYMENT_TYPE_RECHARGE.equals(paymentType)) {
+                //3.1 远程调用账户服务 余额充值
+                Result result = accountFeignClient.rechargePaySuccess(orderNo);
 
+                //3.2 判断响应对象业务状态码是否为200
+                if (result.getCode().intValue() != 200) {
+                    throw new GuiguException(result.getCode(), result.getMessage());
+                }
             }
         }
 

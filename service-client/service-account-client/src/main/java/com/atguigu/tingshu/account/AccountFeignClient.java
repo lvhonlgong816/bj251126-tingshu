@@ -37,4 +37,12 @@ public interface AccountFeignClient {
      */
     @GetMapping("/rechargeInfo/getRechargeInfo/{orderNo}")
     public Result<RechargeInfo> getRechargeInfo(@PathVariable String orderNo);
+
+    /**
+     * 支付成功后，修改充值状态以及完成充值
+     * @param orderNo
+     * @return
+     */
+    @GetMapping("/rechargeInfo/rechargePaySuccess/{orderNo}")
+    public Result rechargePaySuccess(@PathVariable String orderNo);
 }

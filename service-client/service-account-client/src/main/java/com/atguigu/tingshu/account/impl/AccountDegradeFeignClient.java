@@ -23,4 +23,10 @@ public class AccountDegradeFeignClient implements AccountFeignClient {
         log.error("账户服务执行getRechargeInfo服务降级");
         return null;
     }
+
+    @Override
+    public Result rechargePaySuccess(String orderNo) {
+        log.error("账户服务执行rechargePaySuccess服务降级");
+        return null;
+    }
 }

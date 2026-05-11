@@ -2,6 +2,7 @@ package com.atguigu.tingshu.account.service;
 
 import com.atguigu.tingshu.model.account.UserAccount;
 import com.atguigu.tingshu.vo.account.AccountDeductVo;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.math.BigDecimal;
@@ -40,4 +41,12 @@ public interface UserAccountService extends IService<UserAccount> {
      * @return
      */
     void checkAndDeduct(AccountDeductVo accountDeductVo);
+
+    /**
+     *
+     * @param pageInfo 分页对象
+     * @param userId 用户ID
+     * @param tradeType 交易类型 1201充值 1204消费
+     */
+    void findUserAccountDetailPage(Page pageInfo, Long userId, String tradeType);
 }

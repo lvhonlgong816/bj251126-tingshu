@@ -50,4 +50,9 @@ public class UserDegradeFeignClient implements UserFeignClient {
     public Result savePaidRecord(UserPaidRecordVo userPaidRecordVo) {
         return null;
     }
+
+    @Override
+    public Result updateVipExpireStatus() {
+        return null;
+    }
 }

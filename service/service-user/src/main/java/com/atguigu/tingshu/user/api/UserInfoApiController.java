@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -102,6 +103,18 @@ public class UserInfoApiController {
     @PostMapping("/userInfo/savePaidRecord")
     public Result savePaidRecord(@RequestBody UserPaidRecordVo userPaidRecordVo){
         userInfoService.savePaidRecord(userPaidRecordVo);
+        return Result.ok();
+    }
+
+    /**
+     * 更新VIP状态：处理过期会员
+     * @return
+     */
+    @Operation(summary = "更新VIP状态：处理过期会员")
+    @GetMapping("/updateVipExpireStatus")
+    public Result updateVipExpireStatus(){
+        Date now = new Date();
+        userInfoService.updateVipExpireStatus(now);
         return Result.ok();
     }
 }
