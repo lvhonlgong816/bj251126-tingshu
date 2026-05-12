@@ -32,6 +32,9 @@ public class AlbumTrade extends AbstractTradeStrategy {
     @Autowired
     private UserFeignClient userFeignClient;
 
+    @Autowired
+    private AlbumFeignClient albumFeignClient;
+
 
     /**
      * 对专辑进行结算
