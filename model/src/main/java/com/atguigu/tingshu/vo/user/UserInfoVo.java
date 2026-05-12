@@ -27,4 +27,7 @@ public class UserInfoVo {
 	@Schema(description = "当前VIP到期时间，即失效时间")
 	private Date vipExpireTime;
 
+	@Schema(description = "当前登录城市")  //根据用户登录IP获取
+	private String city;
+
 }

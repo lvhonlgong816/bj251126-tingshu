@@ -104,6 +104,8 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
             String loginKey = RedisConstant.USER_LOGIN_KEY_PREFIX + token;
             //4.3 存入Redis key:登录key value:用户基本信息：UserInfoVo 存7天有效期
             UserInfoVo userInfoVo = BeanUtil.copyProperties(userInfo, UserInfoVo.class);
+            //调用百度地图开放平台获取此刻登录城市
+            userInfoVo.setCity("北京市");
             redisTemplate.opsForValue().set(loginKey, userInfoVo, RedisConstant.USER_LOGIN_KEY_TIMEOUT, TimeUnit.SECONDS);
             //5.返回令牌
             return Map.of("token", token);

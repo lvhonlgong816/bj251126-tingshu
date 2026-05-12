@@ -14,9 +14,11 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.CompletionSuggestOption;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.Suggestion;
+import co.elastic.clients.json.JsonData;
 import com.alibaba.fastjson.JSON;
 import com.atguigu.tingshu.album.AlbumFeignClient;
 import com.atguigu.tingshu.common.constant.RedisConstant;
+import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.model.album.*;
 import com.atguigu.tingshu.model.search.AlbumInfoIndex;
 import com.atguigu.tingshu.model.search.AttributeValueIndex;
@@ -27,6 +29,7 @@ import com.atguigu.tingshu.search.repository.SuggestIndexRepository;
 import com.atguigu.tingshu.search.service.SearchService;
 import com.atguigu.tingshu.user.client.UserFeignClient;
 import com.atguigu.tingshu.vo.album.AlbumStatVo;
+import com.atguigu.tingshu.vo.album.TrackStatMqVo;
 import com.atguigu.tingshu.vo.search.AlbumInfoIndexVo;
 import com.atguigu.tingshu.vo.search.AlbumSearchResponseVo;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
@@ -150,7 +153,7 @@ public class SearchServiceImpl implements SearchService {
                 .orTimeout(1, TimeUnit.SECONDS)
                 .join();
         //6.调用ES持久层保存专辑索引库文档对象到ES
-        //albumInfoIndexRepository.save(albumInfoIndex);
+        albumInfoIndexRepository.save(albumInfoIndex);
 
         //7.将专辑标题 构建 提示词文档对象 存入提示词索引库
         this.saveSuggestInfo(albumInfoIndex.getId(), albumInfoIndex.getAlbumTitle());
@@ -580,6 +583,45 @@ public class SearchServiceImpl implements SearchService {
             return list;
         }
         return List.of();
+    }
+
+    /**
+     #增量更新
+     POST /albuminfo/_update/1
+     {
+     "script": {
+     "source": "ctx._source.playStatNum += params.increment",
+     "lang": "painless",
+     "params": {
+     "increment": 1
+     }
+     }
+     }
+     */
+    /**
+     * 更新专辑统计数值
+     *
+     * @param mqVo
+     */
+    @Override
+    public void updateAlbumStat(TrackStatMqVo mqVo) {
+        try {
+            Long albumId = mqVo.getAlbumId();
+            String incrementField = "";
+            if (SystemConstant.TRACK_STAT_PLAY.equals(mqVo.getStatType())) {
+                incrementField = "playStatNum";
+
+            } else if (SystemConstant.TRACK_STAT_COMMENT.equals(mqVo.getStatType())) {
+                incrementField = "commentStatNum";
+            }
+            String finalIncrementField = incrementField;
+            elasticsearchClient.update(
+                    u -> u.index(INDEX_NAME).id(albumId.toString())
+                            .script(s -> s.inline(i -> i.source("ctx._source." + finalIncrementField + " += params.increment").lang("painless").params(Map.of("increment", JsonData.of(mqVo.getCount()))))),
+                    AlbumInfoIndex.class);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

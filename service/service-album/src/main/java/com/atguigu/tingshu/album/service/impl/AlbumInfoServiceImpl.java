@@ -36,6 +36,7 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -230,6 +231,7 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
      * @return
      */
     @Override
+    @Cacheable(value = "albuminfo", key = "#id")
     public AlbumInfo getAlbumInfo(Long id) {
         try {
             //1.优先从Redis获取业务数据 命中则直接返回结果

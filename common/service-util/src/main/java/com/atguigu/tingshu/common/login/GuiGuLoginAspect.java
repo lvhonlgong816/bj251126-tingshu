@@ -17,6 +17,8 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * @author: atguigu
  * @create: 2026-04-21 10:07
@@ -63,7 +65,13 @@ public class GuiGuLoginAspect {
 
         //4.如果用户信息有值，将用户ID存入ThreadLocal，方便在javaEE三层controller，service，Mapper获取用户ID
         if(userInfoVo!=null){
+            //TODO 根据IP获取调用接口所在城市 “北京市” 如果不一致 删除Redis令牌抛出208错误 前端重新登录
             AuthContextHolder.setUserId(userInfoVo.getId());
+            //判断是否需要刷新令牌 得到现有令牌剩余有效期 判断是否小于规定阈值24小时，如果小于再次设置令牌有效期
+            Long expire = redisTemplate.getExpire(loginKey, TimeUnit.HOURS);
+            if(expire<=24){
+                redisTemplate.expire(loginKey, RedisConstant.USER_LOGIN_KEY_TIMEOUT, TimeUnit.SECONDS);
+            }
         }
         //5.执行目标方法
         Object retVal = pjp.proceed();

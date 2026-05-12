@@ -14,6 +14,7 @@ import com.atguigu.tingshu.common.handler.GlobalExceptionHandler;
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
 import com.atguigu.tingshu.common.rabbit.service.RabbitService;
 import com.atguigu.tingshu.common.result.Result;
+import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.model.order.OrderDerate;
@@ -22,6 +23,8 @@ import com.atguigu.tingshu.model.order.OrderInfo;
 import com.atguigu.tingshu.model.user.VipServiceConfig;
 import com.atguigu.tingshu.order.helper.SignHelper;
 import com.atguigu.tingshu.order.mapper.OrderInfoMapper;
+import com.atguigu.tingshu.order.pattern.TradeStrategy;
+import com.atguigu.tingshu.order.pattern.factory.TradeStrategyFactory;
 import com.atguigu.tingshu.order.service.OrderDerateService;
 import com.atguigu.tingshu.order.service.OrderDetailService;
 import com.atguigu.tingshu.order.service.OrderInfoService;
@@ -44,6 +47,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -90,6 +94,9 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
     @Autowired
     private RabbitService rabbitService;
 
+    @Autowired
+    private TradeStrategyFactory tradeStrategyFactory;
+
     /**
      * 订单结算（会员套餐、专辑、声音）
      *
@@ -98,7 +105,12 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
      */
     @Override
     public OrderInfoVo trade(Long userId, TradeVo tradeVo) {
-        //1.初始化VO对象 以及价格相关属性、商品相关集合属性
+        //1.根据付款项目类型获取对应的策略实现类对象
+        TradeStrategy tradeStrategy = tradeStrategyFactory.getTradeStrategy(tradeVo.getItemType());
+        //2.调用不同策略实现类对象进行订单结算
+        return tradeStrategy.trade(tradeVo, userId);
+
+       /* //1.初始化VO对象 以及价格相关属性、商品相关集合属性
         OrderInfoVo orderInfoVo = new OrderInfoVo();
         //1.1 声明三个价格 "0.00"
         BigDecimal originalAmount = new BigDecimal("0.00");
@@ -246,7 +258,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         orderInfoVo.setSign(sign);
 
         //6.返回订单vo对象
-        return orderInfoVo;
+        return orderInfoVo;*/
     }
 
     @Autowired
